@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "../Core/portsleep.h"
 
 #include "libsddc.h"
 #include "wavewrite.h"
@@ -120,7 +121,8 @@ int main(int argc, char **argv)
   const char *outfilename = 0;
   double sample_rate = 0.0;
 
-  double vhf_frequency = 100e6;
+  //double vhf_frequency = 100e6;
+  double vhf_frequency = 97.3 * 1e6;
   double vhf_attenuation = 20;  /* 20dB attenuation */
 
   sscanf(argv[2], "%lf", &sample_rate);
@@ -183,8 +185,10 @@ int main(int argc, char **argv)
   /* todo: move this into a thread */
   stop_reception = 0;
   clock_gettime(CLOCK_REALTIME, &clk_start);
-  while (!stop_reception)
+  while (!stop_reception) {
     sddc_handle_events(sddc);
+    sleep_ms(100);
+  }
 
   fprintf(stderr, "finished. now stop streaming ..\n");
   if (sddc_stop_streaming(sddc) < 0) {

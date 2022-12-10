@@ -16,11 +16,26 @@
 #include "../Interface.h"
 #include "dsp/ringbuffer.h"
 
+struct device_info {
+  char *manufacturer;
+  char *product;
+  char *serial_number;
+};
+
+typedef struct device_info device_info_t;
+
+inline void free_device_info(device_info_t dev_info) {
+	free(dev_info.manufacturer);
+	free(dev_info.product);
+	free(dev_info.serial_number);
+}
+
 class fx3class
 {
 public:
 	virtual ~fx3class(void) {}
-	virtual bool Open(const uint8_t* fw_data, uint32_t fw_size) = 0;
+	virtual bool Open(uint8_t dev_idx, const uint8_t* fw_data, uint32_t fw_size) = 0;
+	virtual bool Close() = 0;
 	virtual bool Control(FX3Command command, uint8_t data = 0) = 0;
 	virtual bool Control(FX3Command command, uint32_t data) = 0;
 	virtual bool Control(FX3Command command, uint64_t data) = 0;
@@ -30,6 +45,7 @@ public:
 	virtual void StartStream(ringbuffer<int16_t>& input, int numofblock) = 0;
 	virtual void StopStream() = 0;
 	virtual bool Enumerate(unsigned char& idx, char* lbuf, const uint8_t* fw_data, uint32_t fw_size) = 0;
+	virtual bool Enumerate(unsigned char &idx, device_info_t *dev_info, const uint8_t* fw_data, uint32_t fw_size) = 0;
 };
 
 extern "C" fx3class* CreateUsbHandler();

@@ -56,6 +56,44 @@ make
 
 ## Build Instruction for Linux
 
+1. Install libusb v1.0.23
+
+When using libusb-1.0.24+ you will encounter a couple of issues:
+
+- The following error upon calling "**hardware->FX3producerOff();**"
+
+```
+usbi_mutex_lock: Assertion `pthread_mutex_lock(mutex) == 0' failed
+```
+
+Temp Fix uninstall the default installed version and install v1.0.23:
+
+- Uninstall
+```
+dpkg -l libusb-1.0*
+apt-cache policy libusb-1.0*
+
+sudo apt remove libusb-1.0-0-dev
+sudo apt remove libusb-1.0-0
+```
+
+- Install LibUSB v1.0.23:
+
+```
+wget "https://launchpad.net/ubuntu/+archive/primary/+files/libusb-1.0-0_1.0.23-3_amd64.deb"
+wget "https://launchpad.net/ubuntu/+archive/primary/+files/libusb-1.0-0-dev_1.0.23-3_amd64.deb"
+wget "https://launchpad.net/ubuntu/+archive/primary/+files/libusb-1.0-doc_1.0.23-3_all.deb"
+sudo dpkg --install libusb-1.0-*_1.0.23-3_*.deb
+
+```
+
+1. The block size for InputBuffer is defined via transferSize under "**config.h**".  Under linux this needs to be 138240 instead of 131072 (128K). So you will will need to alter this value as needed. 
+```
+const uint32_t transferSize = 138240;
+const uint32_t transferSamples = transferSize / sizeof(int16_t);
+```
+
+
 1. Install development packages:
 ```bash
 > sudo apt install libfftw3-dev
