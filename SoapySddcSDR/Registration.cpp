@@ -106,7 +106,7 @@ SoapySDR::KwargsList findSddcSDR(const SoapySDR::Kwargs &args)
 
     fprintf(stderr, "Num Devices Found: [%d]\n", devicelist.numdev);
     
-    return SoapySDR::KwargsList();
+    return results;
 }
 
 /***********************************************************************
