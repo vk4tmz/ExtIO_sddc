@@ -121,8 +121,7 @@ int main(int argc, char **argv)
   const char *outfilename = 0;
   double sample_rate = 0.0;
 
-  //double vhf_frequency = 100e6;
-  double vhf_frequency = 97.3 * 1e6;
+  double vhf_frequency = 100e6;
   double vhf_attenuation = 20;  /* 20dB attenuation */
 
   sscanf(argv[2], "%lf", &sample_rate);

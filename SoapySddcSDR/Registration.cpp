@@ -61,6 +61,9 @@ SoapySDR::KwargsList findSddcSDR(const SoapySDR::Kwargs &args)
     SoapySDR::KwargsList results;
     char lblstr[128];
 
+    // TODO: Remove once done 
+    SoapySDR_setLogLevel(SOAPY_SDR_DEBUG);
+
     auto Fx3 = CreateUsbHandler();
 
     if (loadFirmwareImage(imagefile, &res_data, &res_size) <= 0)
@@ -69,7 +72,7 @@ SoapySDR::KwargsList findSddcSDR(const SoapySDR::Kwargs &args)
     unsigned char idx = 0;
 //	int selected = 0;
     device_info_t dev_info;
-    fprintf(stderr, "Enumerating Devices...\n");
+    SoapySDR_logf(SOAPY_SDR_INFO, "Enumerating Devices...");
     while (Fx3->Enumerate(idx, &dev_info, res_data, res_size)) {
         // https://en.wikipedia.org/wiki/West_Bridge
         int retry = 2;
@@ -82,17 +85,21 @@ SoapySDR::KwargsList findSddcSDR(const SoapySDR::Kwargs &args)
         snprintf(lblstr, sizeof(lblstr), "%s:%s:%s", dev_info.manufacturer, dev_info.product, dev_info.serial_number);
 
         if (isBootloaderFirmwareInuse(dev_info.product)) {
-            fprintf(stderr, "Skipped DEV IDX: [%d] Label: [%s] as Boot Loader Firmware still acitve.\n", idx, lblstr);
+            SoapySDR_logf(SOAPY_SDR_WARNING, "  - Skipped DEV IDX: [%d] Label: [%s] as Boot Loader Firmware still acitve.", idx, lblstr);
             continue;
         }
         
-        fprintf(stderr, "Found DEV IDX: [%d] Label: [%s]\n", idx, lblstr);
+        SoapySDR_logf(SOAPY_SDR_INFO, "  - Found DEV IDX: [%d] Label: [%s]", idx, lblstr);
 
         SoapySDR::Kwargs dev;
         dev["serial"] = dev_info.serial_number;
         const bool serialMatch = args.count("serial") == 0 or args.at("serial") == dev["serial"];
         if (serialMatch) {
-            fprintf(stderr, "Found Match... Dev Idx: [%d]\n", idx);
+            if (args.count("serial") > 0) {
+                SoapySDR_logf(SOAPY_SDR_DEBUG, "  - Matched Dev IDX: [%d] to requested serial: [%s] ", idx, dev["serial"].c_str());
+            } else {
+                SoapySDR_logf(SOAPY_SDR_DEBUG, "  - Matched Dev IDX: [%d]", idx);
+            }
 
             dev["label"] = lblstr;
             results.push_back(dev);
@@ -104,7 +111,7 @@ SoapySDR::KwargsList findSddcSDR(const SoapySDR::Kwargs &args)
     }
     devicelist.numdev = idx;
 
-    fprintf(stderr, "Num Devices Found: [%d]\n", devicelist.numdev);
+    SoapySDR_logf(SOAPY_SDR_INFO, "Num Devices Found: [%d]", devicelist.numdev);
     
     return results;
 }
