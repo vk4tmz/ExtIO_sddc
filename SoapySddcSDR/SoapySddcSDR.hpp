@@ -145,6 +145,27 @@ public:
                    long long &timeNs,
                    const long timeoutUs = 200000);
 
+
+    /*******************************************************************
+     * Frequency API
+     ******************************************************************/
+
+    void setFrequency(
+            const int direction,
+            const size_t channel,
+            const std::string &name,
+            const double frequency,
+            const SoapySDR::Kwargs &args = SoapySDR::Kwargs());
+
+    double getFrequency(const int direction, const size_t channel, const std::string &name) const;
+
+    std::vector<std::string> listFrequencies(const int direction, const size_t channel) const;
+
+    SoapySDR::RangeList getFrequencyRange(const int direction, const size_t channel, const std::string &name) const;
+
+    SoapySDR::ArgInfoList getFrequencyArgsInfo(const int direction, const size_t channel) const;
+
+    
     
 
     

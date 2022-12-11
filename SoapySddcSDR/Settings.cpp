@@ -263,3 +263,81 @@ SoapySDR::Range SoapySddcSDR::getGainRange(const int direction, const size_t cha
    
    return SoapySDR::Range(0, 0);
 }
+
+/*******************************************************************
+ * Frequency API
+ ******************************************************************/
+
+void SoapySddcSDR::setFrequency(
+        const int direction,
+        const size_t channel,
+        const std::string &name,
+        const double frequency,
+        const SoapySDR::Kwargs &args)
+{
+    if (name == "RF")
+    {
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting center freq: %d", (uint32_t)frequency);
+        int r = RadioHandler.TuneLO(frequency);
+        if (r != 0)
+        {
+            throw std::runtime_error("setFrequency failed");
+        }
+        LOfreq = frequency;
+    }
+
+    if (name == "CORR")
+    {
+        throw std::runtime_error("TODO: need to handle this setFrequencyCorrection failed");
+    }
+}
+
+double SoapySddcSDR::getFrequency(const int direction, const size_t channel, const std::string &name) const
+{
+    if (name == "RF")
+    {
+        return (double) LOfreq;
+    }
+
+    if (name == "CORR")
+    {
+        // TODO: need to handle const and both
+        return ((double) ppmVHF);
+    }
+
+    return 0;
+}
+
+std::vector<std::string> SoapySddcSDR::listFrequencies(const int direction, const size_t channel) const
+{
+    std::vector<std::string> names;
+    names.push_back("RF");
+    names.push_back("CORR");
+    return names;
+}
+
+SoapySDR::RangeList SoapySddcSDR::getFrequencyRange(
+        const int direction,
+        const size_t channel,
+        const std::string &name) const
+{
+    SoapySDR::RangeList results;
+    if (name == "RF")
+    {
+        results.push_back(SoapySDR::Range(10000, 1764000000));
+    }
+    if (name == "CORR")
+    {
+        results.push_back(SoapySDR::Range(-1000, 1000));
+    }
+    return results;
+}
+
+SoapySDR::ArgInfoList SoapySddcSDR::getFrequencyArgsInfo(const int direction, const size_t channel) const
+{
+    SoapySDR::ArgInfoList freqArgs;
+
+    // TODO: frequency arguments
+
+    return freqArgs;
+}
