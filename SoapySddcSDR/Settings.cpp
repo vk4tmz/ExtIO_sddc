@@ -341,3 +341,70 @@ SoapySDR::ArgInfoList SoapySddcSDR::getFrequencyArgsInfo(const int direction, co
 
     return freqArgs;
 }
+
+
+/*******************************************************************
+ * Sample Rate API
+ ******************************************************************/
+
+void SoapySddcSDR::setSampleRate(const int direction, const size_t channel, const double rate)
+{
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting sample rate: %d", sampleRate);
+    RadioHandler.UpdateSampleRate(rate);
+    double actSampleRate = RadioHandler.getSampleRate();
+
+    if (actSampleRate != rate) {
+        SoapySDR_logf(SOAPY_SDR_ERROR, "Failed to change Sample Rate - Requested: [%d] - Current: [%d]", (uint32_t)rate, (uint32_t) actSampleRate);
+    }
+}
+
+double SoapySddcSDR::getSampleRate(const int direction, const size_t channel) const
+{
+    return sampleRate;
+}
+
+std::vector<double> SoapySddcSDR::listSampleRates(const int direction, const size_t channel) const
+{
+    std::vector<double> results;
+
+    results.push_back( 2000000);
+    results.push_back( 4000000);
+    results.push_back( 8000000);
+    results.push_back(16000000);
+    results.push_back(32000000);
+
+    return results;
+}
+
+SoapySDR::RangeList SoapySddcSDR::getSampleRateRange(const int direction, const size_t channel) const
+{
+    SoapySDR::RangeList results;
+
+    results.push_back(SoapySDR::Range(2000000, 32000000));
+ 
+    return results;
+}
+
+void SoapySddcSDR::setBandwidth(const int direction, const size_t channel, const double bw)
+{
+    // TODO: Review
+}
+
+double SoapySddcSDR::getBandwidth(const int direction, const size_t channel) const
+{
+    return sampleRate;
+}
+
+std::vector<double> SoapySddcSDR::listBandwidths(const int direction, const size_t channel) const
+{
+    std::vector<double> results;
+
+    return results;
+}
+
+SoapySDR::RangeList SoapySddcSDR::getBandwidthRange(const int direction, const size_t channel) const
+{
+    SoapySDR::RangeList results;
+
+    return results;
+}
