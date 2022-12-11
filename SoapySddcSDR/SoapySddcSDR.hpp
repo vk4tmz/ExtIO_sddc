@@ -50,7 +50,8 @@ private:
     SoapySDR::Kwargs dev;
     int devIdx = -1;
 
-    void selectDevice(const std::string &serial,
+    void selectDevice(const std::string idx,
+                      const std::string &serial,
                       const std::string &mode);
 
 };

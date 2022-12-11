@@ -15,8 +15,8 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
         throw std::runtime_error("Failed to load firmware image.");
     }
 
-    SoapySDR_logf(SOAPY_SDR_DEBUG, "SoapySddcSDR() - Initialization");
-    selectDevice(args.at("serial"),
+    selectDevice(args.at("idx"),
+                 args.at("serial"),
                  args.count("mode") ? args.at("mode") : "");    
 }
 
@@ -62,12 +62,12 @@ bool SoapySddcSDR::loadFirmwareImage(const SoapySDR::Kwargs &args) {
     return true;
 }
 
-void SoapySddcSDR::selectDevice(const std::string &serial,
+void SoapySddcSDR::selectDevice(const std::string idx,
+                                const std::string &serial,
                                 const std::string &mode)
 {
     serNo = serial;
-    dev = _cachedResults[serial];
-    devIdx = stoi(dev["idx"]);
+    devIdx = stoi(idx);
 
     if (mode.empty() || (mode == "HF")) {
         rfMode = HFMODE;
