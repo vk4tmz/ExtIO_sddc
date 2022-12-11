@@ -66,6 +66,8 @@ void SoapySddcSDR::selectDevice(const std::string &serial,
                                 const std::string &mode)
 {
     serNo = serial;
+    dev = _cachedResults[serial];
+    devIdx = stoi(dev["idx"]);
 
     if (mode.empty() || (mode == "HF")) {
         rfMode = HFMODE;
@@ -78,10 +80,8 @@ void SoapySddcSDR::selectDevice(const std::string &serial,
 
     SoapySDR_logf(SOAPY_SDR_DEBUG, "serNo: [%s]", serNo.c_str());
     SoapySDR_logf(SOAPY_SDR_DEBUG, "rfMode: [%d]", rfMode);
-
-    // TODO get the first available DEV or te match based on serial
-
-    gbInitHW = Fx3->Open(0, fwImage.res_data, fwImage.res_size) &&
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "Selected Device IDX: [%d]", devIdx);
+    gbInitHW = Fx3->Open(devIdx, fwImage.res_data, fwImage.res_size) &&
 				RadioHandler.Init(Fx3, Callback); // Check if it there hardware
 	
 #ifdef _DEBUG
@@ -92,6 +92,13 @@ void SoapySddcSDR::selectDevice(const std::string &serial,
     {
         throw std::runtime_error("Failed to load Open and Initialize Device.");
     }
+
+    // device = rspDevs[devIdx];
+    // hwVer = device.hwVer;
+
+    // SoapySDR_logf(SOAPY_SDR_INFO, "devIdx: %d", devIdx);
+    // SoapySDR_logf(SOAPY_SDR_INFO, "SerNo: %s", device.SerNo);
+    // SoapySDR_logf(SOAPY_SDR_INFO, "hwVer: %d", device.hwVer);
 
     
     // TODO - Close / Release

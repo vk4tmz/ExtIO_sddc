@@ -13,8 +13,6 @@ struct DevContext
 	char dev[MAXNDEV][MAXDEVSTRLEN];
 };
 
-static std::map<std::string, SoapySDR::Kwargs> _cachedResults;
-
 DevContext  devicelist; // list of FX3 devices
 
 /***********************************************************************
@@ -72,7 +70,12 @@ SoapySDR::KwargsList findSddcSDR(const SoapySDR::Kwargs &args)
         SoapySDR_logf(SOAPY_SDR_INFO, "  - Found DEV IDX: [%d] Label: [%s]", idx, lblstr);
 
         SoapySDR::Kwargs dev;
+        dev["idx"] = std::to_string(idx);
         dev["serial"] = dev_info.serial_number;
+        dev["manufacturer"] = dev_info.manufacturer;
+        dev["product"] = dev_info.product;
+        dev["label"] = lblstr;
+        
         const bool serialMatch = args.count("serial") == 0 or args.at("serial") == dev["serial"];
         if (serialMatch) {
             if (args.count("serial") > 0) {
@@ -80,10 +83,9 @@ SoapySDR::KwargsList findSddcSDR(const SoapySDR::Kwargs &args)
             } else {
                 SoapySDR_logf(SOAPY_SDR_DEBUG, "  - Matched Dev IDX: [%d]", idx);
             }
-
-            dev["label"] = lblstr;
+            
             results.push_back(dev);
-            _cachedResults[dev["serial"]] = dev;
+            SoapySddcSDR::_cachedResults[dev["serial"]] = dev;
         }
 
         // Attempt Next Dev Idx

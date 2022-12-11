@@ -32,6 +32,7 @@ class SoapySddcSDR: public SoapySDR::Device
 {
 public:
     inline static FirmwareImage_t fwImage;
+    inline static std::map<std::string, SoapySDR::Kwargs> _cachedResults;
 
     explicit SoapySddcSDR(const SoapySDR::Kwargs &args);
 
@@ -46,6 +47,8 @@ private:
     fx3class *Fx3 = CreateUsbHandler();
     RadioHandlerClass RadioHandler;
     bool gbInitHW = false;
+    SoapySDR::Kwargs dev;
+    int devIdx = -1;
 
     void selectDevice(const std::string &serial,
                       const std::string &mode);
