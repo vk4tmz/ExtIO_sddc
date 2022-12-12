@@ -408,3 +408,171 @@ SoapySDR::RangeList SoapySddcSDR::getBandwidthRange(const int direction, const s
 
     return results;
 }
+
+
+/*******************************************************************
+ * Settings API
+ ******************************************************************/
+
+SoapySDR::ArgInfoList SoapySddcSDR::getSettingInfo(void) const
+{
+    SoapySDR::ArgInfoList setArgs;
+
+    SoapySDR::ArgInfo vgaArg;
+
+    vgaArg.key = "vga";
+    vgaArg.value = "true";
+    vgaArg.name = "VGA";
+    vgaArg.description = "Variable Gain Amplifier";
+    vgaArg.type = SoapySDR::ArgInfo::BOOL;
+   
+    setArgs.push_back(vgaArg);
+
+    SoapySDR::ArgInfo pgaArg;
+
+    pgaArg.key = "pga";
+    pgaArg.value = "true";
+    pgaArg.name = "PGA";
+    pgaArg.description = "PGA Front End Amplifier";
+    pgaArg.type = SoapySDR::ArgInfo::BOOL;
+   
+    setArgs.push_back(pgaArg);
+
+    SoapySDR::ArgInfo ditherArg;
+
+    ditherArg.key = "dither";
+    ditherArg.value = "true";
+    ditherArg.name = "Dither";
+    ditherArg.description = "Dither";
+    ditherArg.type = SoapySDR::ArgInfo::BOOL;
+   
+    setArgs.push_back(ditherArg);
+
+    SoapySDR::ArgInfo randArg;
+
+    randArg.key = "rand";
+    randArg.value = "true";
+    randArg.name = "Rand";
+    randArg.description = "Rand";
+    randArg.type = SoapySDR::ArgInfo::BOOL;
+   
+    setArgs.push_back(randArg);
+
+    SoapySDR::ArgInfo biasTVHFArg;
+
+    biasTVHFArg.key = "bias_tee_vhf";
+    biasTVHFArg.value = "true";
+    biasTVHFArg.name = "BiasT (VHF)";
+    biasTVHFArg.description = "BiasT (VHF)";
+    biasTVHFArg.type = SoapySDR::ArgInfo::BOOL;
+   
+    setArgs.push_back(biasTVHFArg);
+
+    SoapySDR::ArgInfo biasTHFArg;
+
+    biasTHFArg.key = "bias_tee_hf";
+    biasTHFArg.value = "true";
+    biasTHFArg.name = "BiasT (HF)";
+    biasTHFArg.description = "BiasT (HF)";
+    biasTHFArg.type = SoapySDR::ArgInfo::BOOL;
+ 
+   
+    setArgs.push_back(biasTHFArg);
+
+    SoapySDR::ArgInfo iqSwapArg;
+
+    iqSwapArg.key = "iq_swap";
+    iqSwapArg.value = "false";
+    iqSwapArg.name = "I/Q Swap";
+    iqSwapArg.description = "I/Q Swap Mode";
+    iqSwapArg.type = SoapySDR::ArgInfo::BOOL;
+
+    setArgs.push_back(iqSwapArg);
+
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "SETARGS?");
+
+    return setArgs;
+}
+
+void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value)
+{
+    if (key == "vga_vhf")
+    {
+        vgaVHF = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "VGA VHF: %s", vgaVHF ? "true" : "false");
+    }
+    else if (key == "vga_hf")
+    {
+        vgaHF = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "VGA HF: %s", vgaHF ? "true" : "false");
+    }
+    else if (key == "pga")
+    {
+        pga = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "PGA: %s", pga ? "true" : "false");
+    }
+    else if (key == "dither")
+    {
+        dither = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "DITHER: %s", dither ? "true" : "false");
+    }
+    else if (key == "rand")
+    {
+        rand = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "RAND: %s", rand ? "true" : "false");
+    }
+    else if (key == "bias_tee_vhf")
+    {
+        biasTeeVHF = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT VHF: %s", biasTeeVHF ? "true" : "false");
+    }
+    else if (key == "bias_tee_hf")
+    {
+        biasTeeHF = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT HF: %s", biasTeeHF ? "true" : "false");
+    }
+    else if (key == "iq_swap")
+    {
+        iqSwap = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "RTL-SDR I/Q swap: %s", iqSwap ? "true" : "false");
+    }
+}
+
+std::string SoapySddcSDR::readSetting(const std::string &key) const
+{
+    if (key == "vga_vhf")
+    {
+        return BoolToString(vgaVHF);
+    }
+    else if (key == "vga_hf")
+    {
+        return BoolToString(vgaHF);
+    }
+    else if (key == "pga")
+    {
+        return BoolToString(pga);
+    }
+    else if (key == "dither")
+    {
+        return BoolToString(dither);
+    }
+    else if (key == "rand")
+    {
+        return BoolToString(rand);
+    }
+    else if (key == "bias_tee_vhf")
+    {
+        return BoolToString(biasTeeVHF);
+    }
+    else if (key == "bias_tee_hf")
+    {
+        return BoolToString(biasTeeHF);
+    }
+    else if (key == "iq_swap")
+    {
+        return BoolToString(iqSwap);
+    }
+
+    SoapySDR_logf(SOAPY_SDR_WARNING, "Unknown setting '%s'", key.c_str());
+    return "";
+}

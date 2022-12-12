@@ -36,6 +36,17 @@ void freeFirmwareImage(FirmwareImage_t fwImage) {
     fwImage.res_size = 0;
 }
 
+inline const char * BoolToString(bool b)
+{
+  return b ? "true" : "false";
+}
+
+inline bool StringToBool(std::string s)
+{
+  return (s=="true");
+}
+
+
 class SoapySddcSDR: public SoapySDR::Device
 {
 public:
@@ -187,6 +198,16 @@ public:
     SoapySDR::RangeList getBandwidthRange(const int direction, const size_t channel) const;
     
 
+    /*******************************************************************
+     * Settings API
+     ******************************************************************/
+
+    SoapySDR::ArgInfoList getSettingInfo(void) const;
+
+    void writeSetting(const std::string &key, const std::string &value);
+
+    std::string readSetting(const std::string &key) const;
+
     
 
 private:
@@ -201,11 +222,22 @@ private:
     double sampleRate;
     int sampleRateIdx;
     double LOfreq;
+    double adcNominalFreq;
     int attIdx = 0;
+    bool pga = false;
+    bool dither = false;
+    bool rand = false;
+    bool vgaHF = false;
+    int gainHF = 0;
+    int attHF = 0;
+    bool vgaVHF = false;
+    int gainVHF = 0;
+    int attVHF = 0;
     double ppmVHF = 0;
     double ppmHF = 0;
     bool biasTeeVHF = false;
-    bool biasTeeHF = false ;
+    bool biasTeeHF = false;
+    bool iqSwap = false;
 
     bool useShort = false;
     bool streamActive = false;
