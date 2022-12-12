@@ -164,11 +164,10 @@ public:
     void setFrequency(
             const int direction,
             const size_t channel,
-            const std::string &name,
             const double frequency,
             const SoapySDR::Kwargs &args = SoapySDR::Kwargs());
 
-    double getFrequency(const int direction, const size_t channel, const std::string &name) const;
+    double getFrequency(const int direction, const size_t channel) const;
 
     std::vector<std::string> listFrequencies(const int direction, const size_t channel) const;
 
@@ -221,6 +220,9 @@ private:
     sdrRXFormat rxFormat = SDR_RX_FORMAT_FLOAT32;
     double sampleRate;
     int sampleRateIdx;
+    int srateIdxVHF;
+    int srateIdxHF;
+
     double LOfreq;
     double adcNominalFreq;
     int attIdx = 0;
@@ -253,6 +255,10 @@ private:
                       const std::string &serial);
 
     double getFreqCorrectionFactor();
+    int getActualSrateIdx(void);
+    int setActualSrateIdx(int srate_idx);
+    int SetOverclock(uint32_t adcfreq);
+    int TuneLO(double freq);
     int convertToSampleRateIdx(double samplerate);
 
 };
