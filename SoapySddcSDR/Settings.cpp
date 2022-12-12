@@ -26,6 +26,7 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
 
 SoapySddcSDR::~SoapySddcSDR(void)
 {
+    Fx3->Close();
 }
 
 double SoapySddcSDR::getFreqCorrectionFactor()
@@ -73,11 +74,12 @@ bool SoapySddcSDR::loadFirmwareImage(const SoapySDR::Kwargs &args) {
         return true;
     }
 
-    if (args.count("fwimage") == 0) {
-        throw std::runtime_error("FW Image File not provided. Please supply 'fwimage' argument.");
+    char *imagefile = getenv("FX3_FW_IMG");
+
+    if (imagefile == nullptr) {
+        throw std::runtime_error("Please set environment variable FX3_FW_IMG to location of firmware image.");
     }
 
-    const char *imagefile = args.at("fwimage").c_str();
     SoapySDR_logf(SOAPY_SDR_INFO, "Using Firmware Image: [%s]", imagefile);
 
     // open the firmware
@@ -358,7 +360,7 @@ void SoapySddcSDR::setSampleRate(const int direction, const size_t channel, cons
     if (actSampleRate != rate) {
         SoapySDR_logf(SOAPY_SDR_ERROR, "Failed to change Sample Rate - Requested: [%d] - Current: [%d]", (uint32_t)rate, (uint32_t) actSampleRate);
     }
-    
+
 }
 
 double SoapySddcSDR::getSampleRate(const int direction, const size_t channel) const
