@@ -171,7 +171,7 @@ public:
 
     std::vector<std::string> listFrequencies(const int direction, const size_t channel) const;
 
-    SoapySDR::RangeList getFrequencyRange(const int direction, const size_t channel, const std::string &name) const;
+    SoapySDR::RangeList getFrequencyRange(const int direction, const size_t channel) const;
 
     SoapySDR::ArgInfoList getFrequencyArgsInfo(const int direction, const size_t channel) const;
 
@@ -222,7 +222,7 @@ private:
     int srateIdxVHF;
     int srateIdxHF;
 
-    double LOfreq;
+    double LOfreq = 2000000;
     double ppmVHF = 0;
     double ppmHF = 0;
     bool vga = false;

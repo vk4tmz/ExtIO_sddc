@@ -71,6 +71,10 @@ public:
 
     void uptLed(int led, bool on);
 
+    // transfer variables
+    ringbuffer<int16_t> inputbuffer;
+    ringbuffer<float> outputbuffer;
+
     void EnableDebug(void (*dbgprintFX3)(const char* fmt, ...), bool (*getconsolein)(char* buf, int maxlen)) 
         { 
           this->DbgPrintFX3 = dbgprintFX3; 
@@ -102,10 +106,6 @@ private:
     uint16_t firmware;
     rf_mode modeRF;
     RadioModel radio;
-
-    // transfer variables
-    ringbuffer<int16_t> inputbuffer;
-    ringbuffer<float> outputbuffer;
 
     // threads
     std::thread show_stats_thread;

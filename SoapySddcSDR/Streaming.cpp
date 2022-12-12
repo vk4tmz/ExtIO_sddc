@@ -155,16 +155,6 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
                              long long &timeNs,
                              const long timeoutUs)
 {
-    // the API requests us to wait until either the
-    // timeout is reached or the stream is activated
-    if (!streamActive)
-    {
-        using us = std::chrono::microseconds;
-        std::this_thread::sleep_for(us(timeoutUs));
-        if(!streamActive){
-            return SOAPY_SDR_TIMEOUT;
-        }
-    }
 
     // copy into user's buff - always write to buffs[0] since each stream
     // can have only one rx/channel
@@ -176,11 +166,9 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
     }
     else
     {
-        // TODO: Access RadioHandler.outputbuffer
-        //std::memcpy(buffs[0], (float *)(void*)sdrplay_stream->currentBuff, returnedElems * 2 * sizeof(float));
+        auto buf = RadioHandler.outputbuffer.getReadPtr();
+        std::memcpy(buffs[0], buf, transferSize);
     }
 
-    int returnedElems = 0;
-
-    return (int)returnedElems;
+    return (int)transferSize;
 }

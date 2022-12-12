@@ -267,11 +267,11 @@ double SoapySddcSDR::getGain(const int direction, const size_t channel, const st
 {
     if (name == "HF")
     {
-        SoapySDR_log(SOAPY_SDR_WARNING, "GET HF GAIN  - TODO");
+        //SoapySDR_log(SOAPY_SDR_WARNING, "GET HF GAIN  - TODO");
     }
     else if (name == "VHF")
     {
-        SoapySDR_log(SOAPY_SDR_WARNING, "GET VHF GAIN  - TODO");
+        //SoapySDR_log(SOAPY_SDR_WARNING, "GET VHF GAIN  - TODO");
     }
 
    return 0.0;
@@ -308,37 +308,31 @@ void SoapySddcSDR::setFrequency(
 
 double SoapySddcSDR::getFrequency(const int direction, const size_t channel) const
 {
+    SoapySDR_log(SOAPY_SDR_INFO, "getFrequency()...");
     return LOfreq;
 }
 
 std::vector<std::string> SoapySddcSDR::listFrequencies(const int direction, const size_t channel) const
 {
     std::vector<std::string> names;
-    names.push_back("RF");
-    names.push_back("CORR");
     return names;
 }
 
 SoapySDR::RangeList SoapySddcSDR::getFrequencyRange(
         const int direction,
-        const size_t channel,
-        const std::string &name) const
+        const size_t channel) const
 {
+    SoapySDR_log(SOAPY_SDR_INFO, "getFrequencyRange()...");
     SoapySDR::RangeList results;
-    if (name == "RF")
-    {
-        results.push_back(SoapySDR::Range(10000, 1764000000));
-    }
-    if (name == "CORR")
-    {
-        results.push_back(SoapySDR::Range(-1000, 1000));
-    }
+    results.push_back(SoapySDR::Range(10000, 1764000000));
     return results;
 }
 
 SoapySDR::ArgInfoList SoapySddcSDR::getFrequencyArgsInfo(const int direction, const size_t channel) const
 {
     SoapySDR::ArgInfoList freqArgs;
+
+    SoapySDR_log(SOAPY_SDR_INFO, "getFrequencyArgsInfo()...");
 
     // TODO: frequency arguments
 
