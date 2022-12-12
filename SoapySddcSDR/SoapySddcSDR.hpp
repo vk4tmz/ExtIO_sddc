@@ -218,27 +218,22 @@ private:
 
     // Settings
     sdrRXFormat rxFormat = SDR_RX_FORMAT_FLOAT32;
-    double sampleRate;
     int sampleRateIdx;
     int srateIdxVHF;
     int srateIdxHF;
 
     double LOfreq;
-    double adcNominalFreq;
+    double ppmVHF = 0;
+    double ppmHF = 0;
+ 
     int attIdx = 0;
-    bool pga = false;
-    bool dither = false;
-    bool rand = false;
     bool vgaHF = false;
     int gainHF = 0;
     int attHF = 0;
     bool vgaVHF = false;
     int gainVHF = 0;
     int attVHF = 0;
-    double ppmVHF = 0;
-    double ppmHF = 0;
-    bool biasTeeVHF = false;
-    bool biasTeeHF = false;
+ 
     bool iqSwap = false;
 
     bool useShort = false;

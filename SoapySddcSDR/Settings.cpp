@@ -15,8 +15,8 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
         throw std::runtime_error("Failed to load firmware image.");
     }
 
-    sampleRate = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("rate"));
-    sampleRateIdx = convertToSampleRateIdx(sampleRate);
+    int sampleRate = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("rate"));
+    setSampleRate(SOAPY_SDR_RX, 0, sampleRate);
 
     attIdx = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("attidx"));
 
@@ -54,25 +54,6 @@ int SoapySddcSDR::setActualSrateIdx(int srate_idx)
 		srateIdxHF = srate_idx;
 
     return 0;
-}
-
-int SoapySddcSDR::SetOverclock(uint32_t adcfreq)
-{
-	adcnominalfreq = adcfreq;
-	RadioHandler.UpdateSampleRate(adcfreq);
-	int index = getActualSrateIdx();
-
-	RadioHandler.Start(getActualSrateIdx());
-	TuneLO(adcfreq);
-	return 0;
-}
-
-int SoapySddcSDR::TuneLO(double freq)
-{
-    LOfreq = freq;
-	double internal_LOfreq = LOfreq / getFreqCorrectionFactor();
-	RadioHandler.TuneLO(internal_LOfreq);
-	return 0;
 }
 
 int SoapySddcSDR::convertToSampleRateIdx(double samplerate) {
@@ -219,7 +200,7 @@ void SoapySddcSDR::setFrequencyCorrection(const int direction, const size_t chan
         ppmHF = value;
     }
 
-    TuneLO(LOfreq);
+    setFrequency(direction, channel, LOfreq);
 }
 
 double SoapySddcSDR::getFrequencyCorrection(const int direction, const size_t channel) const {
@@ -317,7 +298,10 @@ void SoapySddcSDR::setFrequency(
         const SoapySDR::Kwargs &args)
 {
     SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting center freq: %d", (uint32_t)frequency);
-    TuneLO(frequency);
+    
+    LOfreq = frequency;
+	double internal_LOfreq = LOfreq / getFreqCorrectionFactor();
+	RadioHandler.TuneLO(internal_LOfreq);
 }
 
 double SoapySddcSDR::getFrequency(const int direction, const size_t channel) const
@@ -366,18 +350,20 @@ SoapySDR::ArgInfoList SoapySddcSDR::getFrequencyArgsInfo(const int direction, co
 
 void SoapySddcSDR::setSampleRate(const int direction, const size_t channel, const double rate)
 {
-    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting sample rate: %d", sampleRate);
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting sample rate: %d", rate);
     RadioHandler.UpdateSampleRate(rate);
     double actSampleRate = RadioHandler.getSampleRate();
+    sampleRateIdx = convertToSampleRateIdx(actSampleRate);
 
     if (actSampleRate != rate) {
         SoapySDR_logf(SOAPY_SDR_ERROR, "Failed to change Sample Rate - Requested: [%d] - Current: [%d]", (uint32_t)rate, (uint32_t) actSampleRate);
     }
+    
 }
 
 double SoapySddcSDR::getSampleRate(const int direction, const size_t channel) const
 {
-    return sampleRate;
+    return RadioHandler.getSampleRate();
 }
 
 std::vector<double> SoapySddcSDR::listSampleRates(const int direction, const size_t channel) const
@@ -389,6 +375,7 @@ std::vector<double> SoapySddcSDR::listSampleRates(const int direction, const siz
     results.push_back( 8000000);
     results.push_back(16000000);
     results.push_back(32000000);
+    //results.push_back(64000000);
 
     return results;
 }
@@ -409,7 +396,7 @@ void SoapySddcSDR::setBandwidth(const int direction, const size_t channel, const
 
 double SoapySddcSDR::getBandwidth(const int direction, const size_t channel) const
 {
-    return sampleRate;
+    return RadioHandler.getSampleRate();
 }
 
 std::vector<double> SoapySddcSDR::listBandwidths(const int direction, const size_t channel) const
@@ -517,40 +504,47 @@ void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value
     {
         vgaVHF = ((value=="true") ? true : false);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "VGA VHF: %s", vgaVHF ? "true" : "false");
+        // TODO: Update RadioHandler 
     }
     else if (key == "vga_hf")
     {
-        vgaHF = ((value=="true") ? true : false);
+        vgaHF = StringToBool(value);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "VGA HF: %s", vgaHF ? "true" : "false");
+        // TODO: Update RadioHandler 
     }
     else if (key == "pga")
     {
-        pga = ((value=="true") ? true : false);
+        bool pga = StringToBool(value);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "PGA: %s", pga ? "true" : "false");
+        RadioHandler.UptPga(pga);
     }
     else if (key == "dither")
     {
-        dither = ((value=="true") ? true : false);
+        bool dither = StringToBool(value);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "DITHER: %s", dither ? "true" : "false");
+        RadioHandler.UptDither(dither);
     }
     else if (key == "rand")
     {
-        rand = ((value=="true") ? true : false);
+        bool rand = StringToBool(value);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "RAND: %s", rand ? "true" : "false");
+        RadioHandler.UptRand(rand);
     }
     else if (key == "bias_tee_vhf")
     {
-        biasTeeVHF = ((value=="true") ? true : false);
+        bool biasTeeVHF = StringToBool(value);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT VHF: %s", biasTeeVHF ? "true" : "false");
+        RadioHandler.UpdBiasT_VHF(biasTeeVHF);
     }
     else if (key == "bias_tee_hf")
     {
-        biasTeeHF = ((value=="true") ? true : false);
+        bool biasTeeHF = StringToBool(value);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT HF: %s", biasTeeHF ? "true" : "false");
+        RadioHandler.UpdBiasT_HF(biasTeeHF);
     }
     else if (key == "iq_swap")
     {
-        iqSwap = ((value=="true") ? true : false);
+        iqSwap = StringToBool(value);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "RTL-SDR I/Q swap: %s", iqSwap ? "true" : "false");
     }
 }
@@ -567,23 +561,23 @@ std::string SoapySddcSDR::readSetting(const std::string &key) const
     }
     else if (key == "pga")
     {
-        return BoolToString(pga);
+        return BoolToString(RadioHandler.GetPga());
     }
     else if (key == "dither")
     {
-        return BoolToString(dither);
+        return BoolToString(RadioHandler.GetDither());
     }
     else if (key == "rand")
     {
-        return BoolToString(rand);
+        return BoolToString(RadioHandler.GetRand());
     }
     else if (key == "bias_tee_vhf")
     {
-        return BoolToString(biasTeeVHF);
+        return BoolToString(RadioHandler.GetBiasT_VHF());
     }
     else if (key == "bias_tee_hf")
     {
-        return BoolToString(biasTeeHF);
+        return BoolToString(RadioHandler.GetBiasT_HF());
     }
     else if (key == "iq_swap")
     {
