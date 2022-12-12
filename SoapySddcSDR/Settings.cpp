@@ -502,16 +502,10 @@ SoapySDR::ArgInfoList SoapySddcSDR::getSettingInfo(void) const
 
 void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value)
 {
-    if (key == "vga_vhf")
+    if (key == "vga")
     {
-        vgaVHF = ((value=="true") ? true : false);
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "VGA VHF: %s", vgaVHF ? "true" : "false");
-        // TODO: Update RadioHandler 
-    }
-    else if (key == "vga_hf")
-    {
-        vgaHF = StringToBool(value);
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "VGA HF: %s", vgaHF ? "true" : "false");
+        vga = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "VGA: %s", vga ? "true" : "false");
         // TODO: Update RadioHandler 
     }
     else if (key == "pga")
@@ -553,13 +547,9 @@ void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value
 
 std::string SoapySddcSDR::readSetting(const std::string &key) const
 {
-    if (key == "vga_vhf")
+    if (key == "vga")
     {
-        return BoolToString(vgaVHF);
-    }
-    else if (key == "vga_hf")
-    {
-        return BoolToString(vgaHF);
+        return BoolToString(vga);
     }
     else if (key == "pga")
     {

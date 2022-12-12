@@ -225,12 +225,11 @@ private:
     double LOfreq;
     double ppmVHF = 0;
     double ppmHF = 0;
- 
+    bool vga = false;
+
     int attIdx = 0;
-    bool vgaHF = false;
     int gainHF = 0;
     int attHF = 0;
-    bool vgaVHF = false;
     int gainVHF = 0;
     int attVHF = 0;
  
