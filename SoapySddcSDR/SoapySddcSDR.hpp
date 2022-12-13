@@ -100,7 +100,8 @@ public:
     void setFrequencyCorrection(const int direction, const size_t channel, const double value);
 
     double getFrequencyCorrection(const int direction, const size_t channel) const;
-
+\
+    double getFrequencyCorrectionFactor() const;
 
     /*******************************************************************
      * Gain API
@@ -167,7 +168,16 @@ public:
             const double frequency,
             const SoapySDR::Kwargs &args = SoapySDR::Kwargs());
 
+    void setFrequency(
+            const int direction,
+            const size_t channel,
+            const std::string &name,
+            const double frequency,
+            const SoapySDR::Kwargs &args = SoapySDR::Kwargs());
+
     double getFrequency(const int direction, const size_t channel) const;
+
+    double getFrequency(const int direction, const size_t channel, const std::string &name) const;
 
     std::vector<std::string> listFrequencies(const int direction, const size_t channel) const;
 
@@ -248,7 +258,6 @@ private:
     void selectDevice(const std::string idx,
                       const std::string &serial);
 
-    double getFreqCorrectionFactor();
     int getActualSrateIdx(void);
     int setActualSrateIdx(int srate_idx);
     int SetOverclock(uint32_t adcfreq);

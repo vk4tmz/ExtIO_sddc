@@ -5,6 +5,7 @@
 static void Callback(void* context, const float* data, uint32_t len)
 {
     // TODO
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "CB: data len [%d]", len);
 }
 
 SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
@@ -15,7 +16,15 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
         throw std::runtime_error("Failed to load firmware image.");
     }
 
-    int sampleRate = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("rate"));
+    uint32_t sampleRate = 0;
+    if (args.count("rate") == 0) { 
+        sampleRate = (int) DEFAULT_SAMPLE_RATE;
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "No RATE arg provided, using default: %d", sampleRate);
+     } else {
+        sampleRate = stoi(args.at("rate"));
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "RATE arg provided: [%s] [%d]", args.at("rate").c_str(), sampleRate);
+     } 
+    //int sampleRate = (args.count("rate") == 0) ? ((int) DEFAULT_SAMPLE_RATE) : stoi(args.at("rate"));
     setSampleRate(SOAPY_SDR_RX, 0, sampleRate);
 
     attIdx = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("attidx"));
@@ -27,16 +36,6 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
 SoapySddcSDR::~SoapySddcSDR(void)
 {
     Fx3->Close();
-}
-
-double SoapySddcSDR::getFreqCorrectionFactor()
-{
-    if (RadioHandler.GetmodeRF() == VHFMODE) {
-	    return 1.0 + (ppmVHF / 1e6);
-    }
-    else {
-        return 1.0 + (ppmHF / 1e6);
-    } 
 }
 
 int SoapySddcSDR::getActualSrateIdx(void)
@@ -191,26 +190,37 @@ bool SoapySddcSDR::hasDCOffsetMode(const int direction, const size_t channel) co
     return false;
 }
 
-bool SoapySddcSDR::hasFrequencyCorrection(const int direction, const size_t channel) const {
+bool SoapySddcSDR::hasFrequencyCorrection(const int direction, const size_t channel) const 
+{
     return true;
 }
 
-void SoapySddcSDR::setFrequencyCorrection(const int direction, const size_t channel, const double value) {
-    if (RadioHandler.GetmodeRF() == VHFMODE) {
-        ppmVHF = value;
-    } else {
-        ppmHF = value;
-    }
-
-    setFrequency(direction, channel, LOfreq);
+double SoapySddcSDR::getFrequencyCorrectionFactor() const
+{
+    return 1.0 + (getFrequencyCorrection(SOAPY_SDR_RX, 0) / 1e6); 
 }
 
-double SoapySddcSDR::getFrequencyCorrection(const int direction, const size_t channel) const {
+double SoapySddcSDR::getFrequencyCorrection(const int direction, const size_t channel) const
+{
     if (RadioHandler.GetmodeRF() == VHFMODE) {
-        return ppmVHF;
+	    return ppmVHF;
+    }
+    else {
+        return ppmHF;
     } 
-    
-    return ppmHF;
+}
+
+void SoapySddcSDR::setFrequencyCorrection(const int direction, const size_t channel, const double value)
+{
+    if (RadioHandler.GetmodeRF() == VHFMODE) {
+	    ppmVHF = value;
+    }
+    else {
+        ppmHF = value;
+    } 
+
+    // Update Frequency with new PPM
+    setFrequency(direction, channel, LOfreq);
 }
 
 /*******************************************************************
@@ -299,22 +309,55 @@ void SoapySddcSDR::setFrequency(
         const double frequency,
         const SoapySDR::Kwargs &args)
 {
-    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting center freq: %d", (uint32_t)frequency);
-    
-    LOfreq = frequency;
-	double internal_LOfreq = LOfreq / getFreqCorrectionFactor();
-	RadioHandler.TuneLO(internal_LOfreq);
+    setFrequency(direction, channel, "RF", frequency, args);
+}
+
+void SoapySddcSDR::setFrequency(
+        const int direction,
+        const size_t channel,
+        const std::string &name,
+        const double frequency,
+        const SoapySDR::Kwargs &args)
+{
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting center freq: [%d] for name: [%s]", (uint32_t)frequency, name.c_str());
+    if (name == "RF") {
+        LOfreq = frequency;
+        double internal_LOfreq = LOfreq / getFrequencyCorrectionFactor();
+        RadioHandler.TuneLO(internal_LOfreq);
+    } else if (name == "CORR") {
+        setFrequencyCorrection(direction, channel, frequency);
+    }
+
 }
 
 double SoapySddcSDR::getFrequency(const int direction, const size_t channel) const
 {
-    SoapySDR_log(SOAPY_SDR_INFO, "getFrequency()...");
-    return LOfreq;
+    return getFrequency(direction, channel, "RF");
+}
+
+double SoapySddcSDR::getFrequency(const int direction, const size_t channel, const std::string &name) const
+{
+    double freq = 0.0;
+
+    if (name == "RF")
+    {
+        return LOfreq;
+    }
+    else if (name == "CORR")
+    {
+        return getFrequencyCorrection(direction, channel);
+    }
+
+    SoapySDR_logf(SOAPY_SDR_INFO, "getFrequency(): Freq: [%d] for name: [%s]", freq, name.c_str());
+
+    return freq;
 }
 
 std::vector<std::string> SoapySddcSDR::listFrequencies(const int direction, const size_t channel) const
 {
-    std::vector<std::string> names;
+    std::vector<std::string> names;;
+    names.push_back("RF");
+    names.push_back("CORR");
     return names;
 }
 
@@ -346,14 +389,15 @@ SoapySDR::ArgInfoList SoapySddcSDR::getFrequencyArgsInfo(const int direction, co
 
 void SoapySddcSDR::setSampleRate(const int direction, const size_t channel, const double rate)
 {
-    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting sample rate: %d", rate);
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting sample rate: %d", (int)rate);
     RadioHandler.UpdateSampleRate(rate);
     double actSampleRate = RadioHandler.getSampleRate();
-    sampleRateIdx = convertToSampleRateIdx(actSampleRate);
 
     if (actSampleRate != rate) {
         SoapySDR_logf(SOAPY_SDR_ERROR, "Failed to change Sample Rate - Requested: [%d] - Current: [%d]", (uint32_t)rate, (uint32_t) actSampleRate);
     }
+
+    sampleRateIdx = convertToSampleRateIdx(actSampleRate);
 
 }
 

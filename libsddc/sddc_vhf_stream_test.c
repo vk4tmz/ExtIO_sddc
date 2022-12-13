@@ -186,7 +186,7 @@ int main(int argc, char **argv)
   clock_gettime(CLOCK_REALTIME, &clk_start);
   while (!stop_reception) {
     sddc_handle_events(sddc);
-    sleep_ms(100);
+    //sleep_ms(100);
   }
 
   fprintf(stderr, "finished. now stop streaming ..\n");

@@ -86,12 +86,12 @@ SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,
 			RadioHandler.UpdatemodeRF(HFMODE);
 	}
 
-	double internal_LOfreq = LOfreq / getFreqCorrectionFactor();
+	double internal_LOfreq = LOfreq / getFrequencyCorrectionFactor();
 	internal_LOfreq = RadioHandler.TuneLO(internal_LOfreq);
-	LOfreq = internal_LOfreq * getFreqCorrectionFactor();
+	LOfreq = internal_LOfreq * getFrequencyCorrectionFactor();
 	if (wishedLO != LOfreq)
 	{
-		 SoapySDR_logf(SOAPY_SDR_WARNING, "wishedLO: [%.3f] != LOFreq: [%.3f].", wishedLO, LOfreq);
+		SoapySDR_logf(SOAPY_SDR_WARNING, "wishedLO: [%.3f] != LOFreq: [%.3f].", wishedLO, LOfreq);
 	}    
 
 	if (RadioHandler.IsReady()) //  HF103 connected
@@ -117,7 +117,7 @@ void SoapySddcSDR::closeStream(SoapySDR::Stream *stream)
 size_t SoapySddcSDR::getStreamMTU(SoapySDR::Stream *stream) const
 {
     // TODO - depends on CS16 or CF32 ???
-    return transferSamples;
+    return EXT_BLOCKLEN * sizeof(float);
 }
 
 int SoapySddcSDR::activateStream(SoapySDR::Stream *stream,
@@ -130,6 +130,8 @@ int SoapySddcSDR::activateStream(SoapySDR::Stream *stream,
         SoapySDR_log(SOAPY_SDR_ERROR, "error in activateStream() - flags != 0");
         return SOAPY_SDR_NOT_SUPPORTED;
     }
+
+    SoapySDR_logf(SOAPY_SDR_INFO, "activateStream(): timeNs: [%ld], numElems: [%d]", timeNs, numElems);
 
     streamActive = true;
 
@@ -144,6 +146,8 @@ int SoapySddcSDR::deactivateStream(SoapySDR::Stream *stream, const int flags, co
         return SOAPY_SDR_NOT_SUPPORTED;
     }
 
+    SoapySDR_logf(SOAPY_SDR_INFO, "deactivateStream(): timeNs: [%ld]", timeNs);
+
     // do nothing because deactivateStream() can be called multiple times
     return 0;
 }
@@ -155,9 +159,10 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
                              long long &timeNs,
                              const long timeoutUs)
 {
-
+    SoapySDR_logf(SOAPY_SDR_INFO, "readStream(): timeNs: [%ld], timeoutUs: [%ld] numElems: [%d]", timeNs, timeoutUs, numElems);
     // copy into user's buff - always write to buffs[0] since each stream
     // can have only one rx/channel
+    int bs = 0;
     if (useShort)
     {
         // TODO: Access RadioHandler.inputbuffer
@@ -167,8 +172,12 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
     else
     {
         auto buf = RadioHandler.outputbuffer.getReadPtr();
-        std::memcpy(buffs[0], buf, transferSize);
+        //bs = EXT_BLOCKLEN * 2 * sizeof(float);
+        bs = EXT_BLOCKLEN;
+        SoapySDR_logf(SOAPY_SDR_INFO, "readStream(): starting memcpy  BS: [%d]", bs);
+        std::memcpy(buffs[0], buf, bs);
+        SoapySDR_logf(SOAPY_SDR_INFO, "readStream(): completed memcpy");
     }
 
-    return (int)transferSize;
+    return bs;
 }
