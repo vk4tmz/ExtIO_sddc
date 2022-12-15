@@ -124,9 +124,10 @@ void r2iqBasicControlClass::convertSamples( void *out_buff, void *in_buff, size_
 
 		if (dataFormat == SOAPY_SDR_CF32)
 		{
-			//ftarget[(st + i)] = float(val);
-			//ftarget[(st + i)] = float(val)/65536lu;
-			ftarget[(st + i)] = SoapySDR::S16toF32(val);
+			//ftarget[(st + (i * 2))] = float(val);
+			//ftarget[(st + (i * 2))] = float(val)/65536lu;
+			ftarget[(st + (i * 2))] = SoapySDR::S16toF32(val);
+			ftarget[(st + (i * 2) + 2)] = 0.0;
 			
 		}
 		else if (dataFormat == SOAPY_SDR_S16)

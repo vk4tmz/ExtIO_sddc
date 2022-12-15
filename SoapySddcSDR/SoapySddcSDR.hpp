@@ -11,6 +11,8 @@
 
 const double DEFAULT_SAMPLE_RATE = 2e6; 
 
+const int TRANSFER_SAMPLES_MULTIPLIER = 1;
+
 typedef enum sdrRXFormat
 {
     SDR_RX_FORMAT_FLOAT32, SDR_RX_FORMAT_INT16
