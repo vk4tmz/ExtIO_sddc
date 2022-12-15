@@ -22,7 +22,7 @@ std::string SoapySddcSDR::getNativeStreamFormat(const int direction, const size_
     }
 
     fullScale = 32767;
-    return SOAPY_SDR_S16;
+    return SOAPY_SDR_CS16;
 }
 
 SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,

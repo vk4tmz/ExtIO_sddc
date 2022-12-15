@@ -130,7 +130,7 @@ void r2iqBasicControlClass::convertSamples( void *out_buff, void *in_buff, size_
 			ftarget[(st + (i * 2) + 2)] = 0.0;
 			
 		}
-		else if (dataFormat == SOAPY_SDR_S16)
+		else if (dataFormat == SOAPY_SDR_CS16)
 		{
 			itarget[(st + i)] = ptr[i];			
 		}
