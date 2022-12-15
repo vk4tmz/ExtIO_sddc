@@ -4,8 +4,7 @@
 
 static void Callback(void* context, const float* data, uint32_t len)
 {
-    // TODO
-    SoapySDR_logf(SOAPY_SDR_DEBUG, "CB: data len [%d]", len);
+    //SoapySDR_logf(SOAPY_SDR_DEBUG, "CB: data len [%d]", len);
 }
 
 SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
@@ -16,15 +15,7 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
         throw std::runtime_error("Failed to load firmware image.");
     }
 
-    uint32_t sampleRate = 0;
-    if (args.count("rate") == 0) { 
-        sampleRate = (int) DEFAULT_SAMPLE_RATE;
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "No RATE arg provided, using default: %d", sampleRate);
-     } else {
-        sampleRate = stoi(args.at("rate"));
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "RATE arg provided: [%s] [%d]", args.at("rate").c_str(), sampleRate);
-     } 
-    //int sampleRate = (args.count("rate") == 0) ? ((int) DEFAULT_SAMPLE_RATE) : stoi(args.at("rate"));
+    int sampleRate = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("rate"));
     setSampleRate(SOAPY_SDR_RX, 0, sampleRate);
 
     attIdx = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("attidx"));
@@ -112,10 +103,12 @@ void SoapySddcSDR::selectDevice(const std::string idx,
     deviceId = stoi(idx);
     dev = _cachedResults[serial];
 
+    r2iqControl = new r2iqBasicControlClass();
+
     SoapySDR_logf(SOAPY_SDR_DEBUG, "serNo: [%s]", serNo.c_str());
     SoapySDR_logf(SOAPY_SDR_DEBUG, "Selected Device ID: [%d]", deviceId);
     gbInitHW = Fx3->Open(deviceId, fwImage.res_data, fwImage.res_size) &&
-				RadioHandler.Init(Fx3, Callback); // Check if it there hardware
+				RadioHandler.Init(Fx3, Callback, r2iqControl); // Check if it there hardware
   
     if (!gbInitHW)
     {

@@ -12,6 +12,7 @@ class ringbufferbase {
 public:
     ringbufferbase(int count) :
         max_count(count),
+        avail_count(0),
         read_index(0),
         write_index(0),
         emptyCount(0),
@@ -58,6 +59,7 @@ public:
     void Stop()
     {
         std::unique_lock<std::mutex> lk(mutex);
+        avail_count = 0;
         read_index = 0;
         write_index = max_count / 2;
         nonfullCV.notify_all();
@@ -71,18 +73,21 @@ protected:
         // if not empty
         for (int i = 0; i < spin_count; i++)
         {
-            if (read_index != write_index)
+            if (avail_count > 0) {
+                avail_count--;
                 return;
+            }
         }
 
-        if (read_index == write_index)
+        if (avail_count == 0)
         {
             std::unique_lock<std::mutex> lk(mutex);
 
             emptyCount++;
             nonemptyCV.wait(lk, [this] {
-                return read_index != write_index;
+                return (avail_count > 0);
             });
+            avail_count--;
         }
     }
 
@@ -90,22 +95,26 @@ protected:
     {
         for (int i = 0; i < spin_count; i++)
         {
-            if ((write_index + 1) % max_count != read_index)
+            if (avail_count < max_count) {
+                avail_count++;
                 return;
+            }
         }
 
-        if ((write_index + 1) % max_count == read_index)
+        if (avail_count < max_count)
         {
             std::unique_lock<std::mutex> lk(mutex);
             fullCount++;
             nonfullCV.wait(lk, [this] {
-                return (write_index + 1) % max_count != read_index;
+                return (avail_count < max_count);
             });
+            avail_count++;
         }
     }
 
     int max_count;
 
+    volatile int avail_count;
     volatile int read_index;
     volatile int write_index;
 

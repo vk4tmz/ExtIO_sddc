@@ -6,6 +6,7 @@
 #include "../Core/config.h"
 #include "../Core/RadioHandler.h"
 #include "../Core/FX3Class.h"
+#include "r2iqBasicControlClass.hpp"
 
 
 const double DEFAULT_SAMPLE_RATE = 2e6; 
@@ -157,6 +158,17 @@ public:
                    long long &timeNs,
                    const long timeoutUs = 200000);
 
+    /*******************************************************************
+     * Direct buffer access API
+     ******************************************************************/
+
+    size_t getNumDirectAccessBuffers(SoapySDR::Stream *stream);
+
+    int getDirectAccessBufferAddrs(SoapySDR::Stream *stream, const size_t handle, void **buffs);
+
+    int acquireReadBuffer( SoapySDR::Stream *stream, size_t &handle, const void **buffs, int &flags, long long &timeNs, const long timeoutUs);
+
+    void releaseReadBuffer( SoapySDR::Stream *stream, const size_t handle);
 
     /*******************************************************************
      * Frequency API
@@ -250,6 +262,8 @@ private:
 
     fx3class *Fx3 = CreateUsbHandler();
     RadioHandlerClass RadioHandler;
+    r2iqBasicControlClass *r2iqControl;
+    std::mutex mutexStreaming;
     bool gbInitHW = false;
 
 

@@ -24,7 +24,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused")
 
 SOAPY_SDR_MODULE_UTIL(
     TARGET SoapySddcSDR
-    SOURCES Registration.cpp Settings.cpp Streaming.cpp
+    SOURCES Registration.cpp Settings.cpp Streaming.cpp r2iqBasicControlClass.cpp
     LIBRARIES sddc ${MY_DEVICE_LIBRARIES}
 )
 

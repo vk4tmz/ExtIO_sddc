@@ -22,7 +22,7 @@ std::string SoapySddcSDR::getNativeStreamFormat(const int direction, const size_
     }
 
     fullScale = 32767;
-    return SOAPY_SDR_CS16;
+    return SOAPY_SDR_S16;
 }
 
 SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,
@@ -116,8 +116,8 @@ void SoapySddcSDR::closeStream(SoapySDR::Stream *stream)
 
 size_t SoapySddcSDR::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    // TODO - depends on CS16 or CF32 ???
-    return EXT_BLOCKLEN * sizeof(float);
+    return EXT_BLOCKLEN;
+    //return EXT_BLOCKLEN * 2;
 }
 
 int SoapySddcSDR::activateStream(SoapySDR::Stream *stream,
@@ -159,10 +159,11 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
                              long long &timeNs,
                              const long timeoutUs)
 {
-    SoapySDR_logf(SOAPY_SDR_INFO, "readStream(): timeNs: [%ld], timeoutUs: [%ld] numElems: [%d]", timeNs, timeoutUs, numElems);
-    // copy into user's buff - always write to buffs[0] since each stream
-    // can have only one rx/channel
-    int bs = 0;
+    int bs = EXT_BLOCKLEN * sizeof(float);
+    //int bs = EXT_BLOCKLEN * 2 * sizeof(float);
+ 
+    //SoapySDR_logf(SOAPY_SDR_INFO, "readStream(): timeNs: [%ld], timeoutUs: [%ld] numElems: [%d]  BlockSize: [%d] Flags: ]%d]  useShort: [%d]", timeNs, timeoutUs, numElems, bs, flags, useShort);
+   
     if (useShort)
     {
         // TODO: Access RadioHandler.inputbuffer
@@ -171,13 +172,38 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
     }
     else
     {
-        auto buf = RadioHandler.outputbuffer.getReadPtr();
-        //bs = EXT_BLOCKLEN * 2 * sizeof(float);
-        bs = EXT_BLOCKLEN;
-        SoapySDR_logf(SOAPY_SDR_INFO, "readStream(): starting memcpy  BS: [%d]", bs);
-        std::memcpy(buffs[0], buf, bs);
-        SoapySDR_logf(SOAPY_SDR_INFO, "readStream(): completed memcpy");
+        {
+            std::unique_lock<std::mutex> lk(mutexStreaming);
+            auto buf = RadioHandler.outputbuffer.getReadPtr();
+            std::memcpy(buffs[0], buf, bs);
+
+            RadioHandler.outputbuffer.ReadDone();
+        }
     }
 
     return bs;
+}
+
+
+/*******************************************************************
+ * Direct buffer access API
+ ******************************************************************/
+
+size_t SoapySddcSDR::getNumDirectAccessBuffers(SoapySDR::Stream *stream)
+{
+    return 0;
+}
+
+int SoapySddcSDR::getDirectAccessBufferAddrs(SoapySDR::Stream *stream, const size_t handle, void **buffs)
+{
+    return SOAPY_SDR_NOT_SUPPORTED;
+}
+
+int SoapySddcSDR::acquireReadBuffer( SoapySDR::Stream *stream, size_t &handle, const void **buffs, int &flags, long long &timeNs, const long timeoutUs)
+{
+	return SOAPY_SDR_NOT_SUPPORTED;
+}
+
+void SoapySddcSDR::releaseReadBuffer( SoapySDR::Stream *stream, const size_t handle)
+{
 }
