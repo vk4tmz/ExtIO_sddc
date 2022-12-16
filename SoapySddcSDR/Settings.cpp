@@ -9,15 +9,13 @@ static void Callback(void* context, const float* data, uint32_t len)
 
 SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
 {
-    if (args.count("serial") == 0) throw std::runtime_error("no available SDDC SDR devices found");
+    if (args.count("serial") == 0) throw std::runtime_error("no available SDDC-SDR devices found");
 
     if (!SoapySddcSDR::loadFirmwareImage(args)) {
         throw std::runtime_error("Failed to load firmware image.");
     }
 
     SetOverclock(DEFAULT_ADC_FREQ);
-
-    attIdx = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("attidx"));
 
     selectDevice(args.at("idx"),
                  args.at("serial"));    
@@ -223,7 +221,7 @@ void SoapySddcSDR::setAntenna(const int direction, const size_t channel, const s
 {
     if (direction != SOAPY_SDR_RX)
     {
-        throw std::runtime_error("setAntena failed: SDDC SDR only supports RX");
+        throw std::runtime_error("setAntena failed: SDDC-SDR only supports RX");
     }
 }
 
