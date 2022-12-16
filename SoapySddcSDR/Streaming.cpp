@@ -87,13 +87,6 @@ SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,
 	}
 
     setFrequency(direction, 0, LOfreq, args);
-	double internal_LOfreq = LOfreq / getFrequencyCorrectionFactor();
-	internal_LOfreq = RadioHandler.TuneLO(internal_LOfreq);
-	LOfreq = internal_LOfreq * getFrequencyCorrectionFactor();
-	if (wishedLO != LOfreq)
-	{
-		SoapySDR_logf(SOAPY_SDR_WARNING, "wishedLO: [%.3f] != LOFreq: [%.3f].", wishedLO, LOfreq);
-	}    
 
 	if (RadioHandler.IsReady()) //  HF103 connected
 	{
