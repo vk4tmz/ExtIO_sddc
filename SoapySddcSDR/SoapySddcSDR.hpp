@@ -277,7 +277,7 @@ private:
     void selectDevice(const std::string idx,
                       const std::string &serial);
 
-    int getSampleRateIdx(void);
+    int getSampleRateIdx(void) const;
     int getSrates(int srate_idx, double *samplerate) const;
     int setSampleRateIdx(int srate_idx);
     int SetOverclock(uint32_t adcfreq);

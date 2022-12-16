@@ -26,7 +26,7 @@ SoapySddcSDR::~SoapySddcSDR(void)
     Fx3->Close();
 }
 
-int SoapySddcSDR::getSampleRateIdx(void)
+int SoapySddcSDR::getSampleRateIdx(void) const
 {
 	if (RadioHandler.GetmodeRF() == VHFMODE)
 		return srateIdxVHF;
@@ -92,6 +92,8 @@ int SoapySddcSDR::convertToSampleRateIdx(uint32_t samplerate) {
     else {
         SoapySDR_logf(SOAPY_SDR_ERROR, "Invalid sample rate: [%ld], defaulting to 2MHz", samplerate);
     }
+
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "Converted sample rate: [%ld], to Idx: [%d]", samplerate, rate);
 
     return rate;
 }
@@ -578,7 +580,15 @@ void SoapySddcSDR::setSampleRate(const int direction, const size_t channel, cons
 
 double SoapySddcSDR::getSampleRate(const int direction, const size_t channel) const
 {
-    return RadioHandler.getSampleRate();
+    double rate;
+    int rateIdx = getSampleRateIdx();
+    if (getSrates(rateIdx, &rate) != 0) {
+        SoapySDR_logf(SOAPY_SDR_ERROR, "Invalid sample rate Idx: [%d]", rateIdx);         
+		return DEFAULT_SAMPLE_RATE;
+    }
+
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "get sample rate: [%ld]", rate);
+    return rate;
 }
 
 std::vector<double> SoapySddcSDR::listSampleRates(const int direction, const size_t channel) const
@@ -613,6 +623,7 @@ void SoapySddcSDR::setBandwidth(const int direction, const size_t channel, const
 
 double SoapySddcSDR::getBandwidth(const int direction, const size_t channel) const
 {
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "get bandwidth, using sample rate: [%ld]", RadioHandler.getSampleRate());
     return RadioHandler.getSampleRate();
 }
 
@@ -689,6 +700,10 @@ SoapySDR::ArgInfoList SoapySddcSDR::getSettingInfo(void) const
    
     setArgs.push_back(randArg);
 
+    //--------------------------
+    // VHF Band Specific
+    //--------------------------
+
     SoapySDR::ArgInfo biasTVHFArg;
 
     biasTVHFArg.key = "bias_tee_vhf";
@@ -698,20 +713,6 @@ SoapySDR::ArgInfoList SoapySddcSDR::getSettingInfo(void) const
     biasTVHFArg.type = SoapySDR::ArgInfo::BOOL;
    
     setArgs.push_back(biasTVHFArg);
-
-    SoapySDR::ArgInfo biasTHFArg;
-
-    biasTHFArg.key = "bias_tee_hf";
-    biasTHFArg.value = "true";
-    biasTHFArg.name = "BiasT (HF)";
-    biasTHFArg.description = "BiasT (HF)";
-    biasTHFArg.type = SoapySDR::ArgInfo::BOOL;
- 
-    setArgs.push_back(biasTHFArg);
-
-    //--------------------------
-    // VHF Band Specific
-    //--------------------------
 
     SoapySDR::ArgInfo attVHFArg;
 
@@ -757,6 +758,16 @@ SoapySDR::ArgInfoList SoapySddcSDR::getSettingInfo(void) const
     //--------------------------
     // HF Band Specific
     //--------------------------
+
+    SoapySDR::ArgInfo biasTHFArg;
+
+    biasTHFArg.key = "bias_tee_hf";
+    biasTHFArg.value = "true";
+    biasTHFArg.name = "BiasT (HF)";
+    biasTHFArg.description = "BiasT (HF)";
+    biasTHFArg.type = SoapySDR::ArgInfo::BOOL;
+ 
+    setArgs.push_back(biasTHFArg);
 
     SoapySDR::ArgInfo attHFArg;
 
@@ -839,12 +850,6 @@ void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value
         SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT VHF: %s", biasTeeVHF ? "true" : "false");
         RadioHandler.UpdBiasT_VHF(biasTeeVHF);
     }
-    else if (key == "bias_tee_hf")
-    {
-        bool biasTeeHF = StringToBool(value);
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT HF: %s", biasTeeHF ? "true" : "false");
-        RadioHandler.UpdBiasT_HF(biasTeeHF);
-    }
     else if (key == "att_vhf")
     {
         attIdxVHF = std::stod(value);
@@ -858,6 +863,12 @@ void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value
         SoapySDR_logf(SOAPY_SDR_DEBUG, "VHF IFGain Idx: %d", gainIdxVHF);
         if (RadioHandler.GetmodeRF() == VHFMODE)
             RadioHandler.UpdateIFGain(gainIdxVHF);
+    }
+    else if (key == "bias_tee_hf")
+    {
+        bool biasTeeHF = StringToBool(value);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT HF: %s", biasTeeHF ? "true" : "false");
+        RadioHandler.UpdBiasT_HF(biasTeeHF);
     }
     else if (key == "att_hf")
     {
