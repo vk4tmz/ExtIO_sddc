@@ -471,8 +471,34 @@ void SoapySddcSDR::setFrequency(
 {
     SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting center freq: [%d] for name: [%s]", (uint32_t)frequency, name.c_str());
     if (name == "RF") {
+
+        // ..... set here the LO frequency in the controlled hardware
+        // Set here the frequency of the controlled hardware to LOfreq
+        const double wishedLO = frequency;
+        double ret = 0;
+        rf_mode rfmode = RadioHandler.GetmodeRF();
+        rf_mode newmode = RadioHandler.PrepareLo(frequency);
+
+        if (newmode == NOMODE) // this freq is not supported
+            throw std::runtime_error("Invalid RF Mode set. Double check requested frequency.");
+
         LOfreq = frequency;
         if (streamActive) {
+            if ((newmode == VHFMODE) && (rfmode != VHFMODE))
+            {
+                    RadioHandler.UpdatemodeRF(VHFMODE);
+                    setMGC(mgcIdxVHF);
+                    SetAttenuator(attIdxVHF);
+                    //SetSrateInternal(giExtSrateIdxVHF, false);
+            }
+            else if ((newmode == HFMODE) && (rfmode != HFMODE))
+            {
+                    RadioHandler.UpdatemodeRF(HFMODE);
+                    setMGC(mgcIdxHF);
+                    SetAttenuator(attIdxHF);
+                    //SetSrateInternal(giExtSrateIdxHF, false)
+            }
+        
             double internal_LOfreq = LOfreq / getFrequencyCorrectionFactor();
             internal_LOfreq = RadioHandler.TuneLO(internal_LOfreq);
            	LOfreq = internal_LOfreq * getFrequencyCorrectionFactor();

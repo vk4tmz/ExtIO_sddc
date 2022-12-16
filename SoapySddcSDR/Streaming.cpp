@@ -67,31 +67,6 @@ SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,
 
 	RadioHandler.Start(getSampleRateIdx());
 	
-    // ..... set here the LO frequency in the controlled hardware
-	// Set here the frequency of the controlled hardware to LOfreq
-	const double wishedLO = LOfreq;
-	double ret = 0;
-	rf_mode rfmode = RadioHandler.GetmodeRF();
-	rf_mode newmode = RadioHandler.PrepareLo(LOfreq);
-
-	if (newmode == NOMODE) // this freq is not supported
-		throw std::runtime_error("Invalid RF Mode set. Double check requested frequency.");
-
-	if ((newmode == VHFMODE) && (rfmode != VHFMODE))
-	{
-			RadioHandler.UpdatemodeRF(VHFMODE);
-            setMGC(mgcIdxVHF);
-			SetAttenuator(attIdxVHF);
-			//SetSrateInternal(giExtSrateIdxVHF, false);
-	}
-	else if ((newmode == HFMODE) && (rfmode != HFMODE))
-	{
-			RadioHandler.UpdatemodeRF(HFMODE);
-            setMGC(mgcIdxHF);
-			SetAttenuator(attIdxHF);
-			//SetSrateInternal(giExtSrateIdxHF, false)
-	}
-
     setFrequency(direction, 0, LOfreq, args);
 
 	if (RadioHandler.IsReady()) //  HF103 connected
