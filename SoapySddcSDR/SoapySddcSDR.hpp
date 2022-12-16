@@ -242,9 +242,10 @@ private:
 
     // Settings
     sdrRXFormat rxFormat = SDR_RX_FORMAT_FLOAT32;
+    bool overclock = false;
     int sampleRateIdx;
-    int srateIdxVHF;
-    int srateIdxHF;
+    int srateIdxVHF = 0;
+    int srateIdxHF = 0;
 
     double LOfreq = 2000000;
     double ppmVHF = 0;
@@ -256,8 +257,6 @@ private:
     int attHF = 0;
     int gainVHF = 0;
     int attVHF = 0;
- 
-    bool iqSwap = false;
 
     bool useShort = false;
     bool streamActive = false;
@@ -274,10 +273,11 @@ private:
     void selectDevice(const std::string idx,
                       const std::string &serial);
 
-    int getActualSrateIdx(void);
-    int setActualSrateIdx(int srate_idx);
+    int getSampleRateIdx(void);
+    int setSampleRateIdx(int srate_idx);
     int SetOverclock(uint32_t adcfreq);
     int TuneLO(double freq);
-    int convertToSampleRateIdx(double samplerate);
+    int convertToSampleRateIdx(uint32_t samplerate);
+    int getSrates(int srate_idx, double *samplerate) const;
 
 };

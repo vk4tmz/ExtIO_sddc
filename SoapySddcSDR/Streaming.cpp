@@ -65,7 +65,7 @@ SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,
 	if (!gbInitHW)
 		return 0;
 
-	RadioHandler.Start(sampleRateIdx);
+	RadioHandler.Start(getSampleRateIdx());
 	
     // ..... set here the LO frequency in the controlled hardware
 	// Set here the frequency of the controlled hardware to LOfreq
@@ -86,6 +86,7 @@ SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,
 			RadioHandler.UpdatemodeRF(HFMODE);
 	}
 
+    setFrequency(direction, 0, LOfreq, args);
 	double internal_LOfreq = LOfreq / getFrequencyCorrectionFactor();
 	internal_LOfreq = RadioHandler.TuneLO(internal_LOfreq);
 	LOfreq = internal_LOfreq * getFrequencyCorrectionFactor();
@@ -108,6 +109,8 @@ SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,
 
 void SoapySddcSDR::closeStream(SoapySDR::Stream *stream)
 {
+    streamActive = false;
+
     // TODO - Close / Release
     RadioHandler.Stop();
     RadioHandler.Close();

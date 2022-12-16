@@ -15,8 +15,7 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
         throw std::runtime_error("Failed to load firmware image.");
     }
 
-    int sampleRate = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("rate"));
-    setSampleRate(SOAPY_SDR_RX, 0, sampleRate);
+    SetOverclock(DEFAULT_ADC_FREQ);
 
     attIdx = (args.count("rate") == 0) ? DEFAULT_SAMPLE_RATE : stoi(args.at("attidx"));
 
@@ -29,7 +28,7 @@ SoapySddcSDR::~SoapySddcSDR(void)
     Fx3->Close();
 }
 
-int SoapySddcSDR::getActualSrateIdx(void)
+int SoapySddcSDR::getSampleRateIdx(void)
 {
 	if (RadioHandler.GetmodeRF() == VHFMODE)
 		return srateIdxVHF;
@@ -37,24 +36,82 @@ int SoapySddcSDR::getActualSrateIdx(void)
 		return srateIdxHF;
 }
 
-int SoapySddcSDR::setActualSrateIdx(int srate_idx)
+int SoapySddcSDR::setSampleRateIdx(int srate_idx)
 {
+    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting sample rate idx: [%d].", srate_idx);
 	if (RadioHandler.GetmodeRF() == VHFMODE)
 		srateIdxVHF = srate_idx;
 	else
 		srateIdxHF = srate_idx;
 
+    if (streamActive)
+        RadioHandler.Start(srate_idx);
+
+    setFrequency(SOAPY_SDR_RX, 0, LOfreq);
+
     return 0;
 }
 
-int SoapySddcSDR::convertToSampleRateIdx(double samplerate) {
-    if      (samplerate <= 2000000) return 4;
-    else if (samplerate <= 4000000) return 3;
-    else if (samplerate <= 8000000) return 2;
-    else if (samplerate <= 16000000) return 1;
-    else if (samplerate <= 32000000) return 0;
-    else
-        return -1;
+int SoapySddcSDR::SetOverclock(uint32_t adcfreq) {
+
+    if (adcfreq > MAX_ADC_FREQ) {
+        SoapySDR_logf(SOAPY_SDR_WARNING, "Requested ADC sample rate: [%ld] above MAX_ADC_FREQ: [%ld], using the default maximum.", adcfreq, MAX_ADC_FREQ);
+        adcfreq = MAX_ADC_FREQ;
+    }
+    if (adcfreq < MIN_ADC_FREQ) {
+        SoapySDR_logf(SOAPY_SDR_WARNING, "Requested ADC sample rate: [%ld] below MIN_ADC_FREQ: [%ld], using the default minimum.", adcfreq, MIN_ADC_FREQ);
+        adcfreq = MIN_ADC_FREQ;
+    }
+    adcnominalfreq = adcfreq;
+
+    RadioHandler.UpdateSampleRate(adcfreq);
+    uint32_t actSampleRate = RadioHandler.getSampleRate();
+
+    if (actSampleRate != adcfreq) {
+        SoapySDR_logf(SOAPY_SDR_ERROR, "Failed to change ADC Sample Rate - Requested: [%d] - Current: [%d]", adcfreq, (uint32_t) actSampleRate);
+    }
+
+    int index = getSampleRateIdx();
+	double rate;
+	while (getSrates(index, &rate) == -1)
+	{
+		index--;
+	}
+    
+	setSampleRateIdx(index);
+
+    return 0;
+}
+
+int SoapySddcSDR::convertToSampleRateIdx(uint32_t samplerate) {
+    uint64_t rate = 0;
+
+    if      (samplerate <= 2000000) rate = 0;
+    else if (samplerate <= 4000000) rate = 1;
+    else if (samplerate <= 8000000) rate = 2;
+    else if (samplerate <= 16000000) rate = 3;
+    else if (samplerate <= 32000000) rate = 4;
+    else {
+        SoapySDR_logf(SOAPY_SDR_ERROR, "Invalid sample rate: [%ld], defaulting to 2MHz", samplerate);
+    }
+
+    return rate;
+}
+
+int SoapySddcSDR::getSrates(int srate_idx, double *samplerate) const
+{
+    double div = pow(2.0, srate_idx);
+	double srateM = div * 2.0;
+	double bwmin = adcnominalfreq / 64.0;
+	if (adcnominalfreq > N2_BANDSWITCH) bwmin /= 2.0;
+	double srate = bwmin * srateM;
+
+	if (srate / adcnominalfreq * 2.0 > 1.1)
+		return -1;
+
+    *samplerate = srate * getFrequencyCorrectionFactor();
+	SoapySDR_logf(SOAPY_SDR_DEBUG, "getSrate idx [%d]  rate: [%ld]", srate_idx, (uint32_t) *samplerate);
+	return 0;
 }
 
 bool SoapySddcSDR::loadFirmwareImage(const SoapySDR::Kwargs &args) {
@@ -103,7 +160,8 @@ void SoapySddcSDR::selectDevice(const std::string idx,
     deviceId = stoi(idx);
     dev = _cachedResults[serial];
 
-    r2iqControl = new r2iqBasicControlClass();
+    //r2iqControl = new r2iqBasicControlClass();
+    r2iqControl = nullptr;
 
     SoapySDR_logf(SOAPY_SDR_DEBUG, "serNo: [%s]", serNo.c_str());
     SoapySDR_logf(SOAPY_SDR_DEBUG, "Selected Device ID: [%d]", deviceId);
@@ -315,8 +373,16 @@ void SoapySddcSDR::setFrequency(
     SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting center freq: [%d] for name: [%s]", (uint32_t)frequency, name.c_str());
     if (name == "RF") {
         LOfreq = frequency;
-        double internal_LOfreq = LOfreq / getFrequencyCorrectionFactor();
-        RadioHandler.TuneLO(internal_LOfreq);
+        if (streamActive) {
+            double internal_LOfreq = LOfreq / getFrequencyCorrectionFactor();
+            internal_LOfreq = RadioHandler.TuneLO(internal_LOfreq);
+           	LOfreq = internal_LOfreq * getFrequencyCorrectionFactor();
+            if (frequency != LOfreq)
+            {
+                SoapySDR_logf(SOAPY_SDR_WARNING, "requested Freq: [%.3f] != LOFreq: [%.3f].", frequency, LOfreq);
+            }    
+
+        }
     } else if (name == "CORR") {
         setFrequencyCorrection(direction, channel, frequency);
     }
@@ -382,16 +448,7 @@ SoapySDR::ArgInfoList SoapySddcSDR::getFrequencyArgsInfo(const int direction, co
 
 void SoapySddcSDR::setSampleRate(const int direction, const size_t channel, const double rate)
 {
-    SoapySDR_logf(SOAPY_SDR_DEBUG, "Setting sample rate: %d", (int)rate);
-    RadioHandler.UpdateSampleRate(rate);
-    double actSampleRate = RadioHandler.getSampleRate();
-
-    if (actSampleRate != rate) {
-        SoapySDR_logf(SOAPY_SDR_ERROR, "Failed to change Sample Rate - Requested: [%d] - Current: [%d]", (uint32_t)rate, (uint32_t) actSampleRate);
-    }
-
-    sampleRateIdx = convertToSampleRateIdx(actSampleRate);
-
+    setSampleRateIdx(convertToSampleRateIdx(rate));
 }
 
 double SoapySddcSDR::getSampleRate(const int direction, const size_t channel) const
@@ -403,12 +460,14 @@ std::vector<double> SoapySddcSDR::listSampleRates(const int direction, const siz
 {
     std::vector<double> results;
 
-    results.push_back( 2000000);
-    results.push_back( 4000000);
-    results.push_back( 8000000);
-    results.push_back(16000000);
-    results.push_back(32000000);
-    //results.push_back(64000000);
+    double rate;
+    for(int i=0; ; i++) 
+    {
+		if (getSrates(i, &rate) == -1)
+			break;
+
+		results.push_back(rate);
+	}
 
     return results;
 }
@@ -454,6 +513,16 @@ SoapySDR::RangeList SoapySddcSDR::getBandwidthRange(const int direction, const s
 SoapySDR::ArgInfoList SoapySddcSDR::getSettingInfo(void) const
 {
     SoapySDR::ArgInfoList setArgs;
+
+    SoapySDR::ArgInfo overclockArg;
+
+    overclockArg.key = "overclock";
+    overclockArg.value = "false";
+    overclockArg.name = "OVERCLOCK";
+    overclockArg.description = "ADC Overclock (True = 128Msps, else 64Msps)";
+    overclockArg.type = SoapySDR::ArgInfo::BOOL;
+   
+    setArgs.push_back(overclockArg);
 
     SoapySDR::ArgInfo vgaArg;
 
@@ -516,24 +585,18 @@ SoapySDR::ArgInfoList SoapySddcSDR::getSettingInfo(void) const
    
     setArgs.push_back(biasTHFArg);
 
-    SoapySDR::ArgInfo iqSwapArg;
-
-    iqSwapArg.key = "iq_swap";
-    iqSwapArg.value = "false";
-    iqSwapArg.name = "I/Q Swap";
-    iqSwapArg.description = "I/Q Swap Mode";
-    iqSwapArg.type = SoapySDR::ArgInfo::BOOL;
-
-    setArgs.push_back(iqSwapArg);
-
-    SoapySDR_logf(SOAPY_SDR_DEBUG, "SETARGS?");
-
     return setArgs;
 }
 
 void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value)
 {
-    if (key == "vga")
+    if (key == "overclock")
+    {
+        overclock = ((value=="true") ? true : false);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "ADC OVERCLOCK: %s", vga ? "true" : "false");
+        SetOverclock(overclock ? DEFAULT_ADC_FREQ * 2 : DEFAULT_ADC_FREQ); 
+    }
+    else if (key == "vga")
     {
         vga = ((value=="true") ? true : false);
         SoapySDR_logf(SOAPY_SDR_DEBUG, "VGA: %s", vga ? "true" : "false");
@@ -569,16 +632,15 @@ void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value
         SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT HF: %s", biasTeeHF ? "true" : "false");
         RadioHandler.UpdBiasT_HF(biasTeeHF);
     }
-    else if (key == "iq_swap")
-    {
-        iqSwap = StringToBool(value);
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "RTL-SDR I/Q swap: %s", iqSwap ? "true" : "false");
-    }
 }
 
 std::string SoapySddcSDR::readSetting(const std::string &key) const
 {
-    if (key == "vga")
+    if (key == "overclock")
+    {
+        return BoolToString(overclock);
+    }
+    else if (key == "vga")
     {
         return BoolToString(vga);
     }
@@ -601,10 +663,6 @@ std::string SoapySddcSDR::readSetting(const std::string &key) const
     else if (key == "bias_tee_hf")
     {
         return BoolToString(RadioHandler.GetBiasT_HF());
-    }
-    else if (key == "iq_swap")
-    {
-        return BoolToString(iqSwap);
     }
 
     SoapySDR_logf(SOAPY_SDR_WARNING, "Unknown setting '%s'", key.c_str());
