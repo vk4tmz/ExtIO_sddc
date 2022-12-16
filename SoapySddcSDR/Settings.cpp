@@ -112,6 +112,108 @@ int SoapySddcSDR::getSrates(int srate_idx, double *samplerate) const
 	return 0;
 }
 
+//-----------
+
+int SoapySddcSDR::GetAttenuators(int atten_idx, float* attenuation) const
+{
+	// fill in attenuation
+	// use positive attenuation levels if signal is amplified (LNA)
+	// use negative attenuation levels if signal is attenuated
+	// sort by attenuation: use idx 0 for highest attenuation / most damping
+	// this functions is called with incrementing idx
+	//    - until this functions return != 0 for no more attenuator setting
+
+	const float *steps;
+	int max_step = RadioHandler.GetRFAttSteps(&steps);
+	if (atten_idx < max_step) {
+		*attenuation = steps[atten_idx];
+		return 0;
+	}
+
+	return 1;
+}
+
+int SoapySddcSDR::GetActualAttIdx(void) const
+{
+	int AttIdx;
+	if (RadioHandler.GetmodeRF() == VHFMODE)
+		AttIdx = attIdxVHF;
+	else
+		AttIdx = attIdxHF;
+
+	const float *steps;
+	int max_step = RadioHandler.GetRFAttSteps(&steps);
+	if (AttIdx >= max_step)
+	{
+		AttIdx = max_step - 1;
+	}
+
+	return AttIdx;
+}
+
+int SoapySddcSDR::SetAttenuator(int atten_idx)
+{
+    EnterFunction1(atten_idx);
+	RadioHandler.UpdateattRF(atten_idx);
+	if (RadioHandler.GetmodeRF() == VHFMODE)
+		attIdxVHF = atten_idx;
+	else
+		attIdxHF = atten_idx;
+
+	return 0;
+}
+
+//
+// MGC
+// sort by ascending gain: use idx 0 for lowest gain
+// this functions is called with incrementing idx
+//    - until this functions returns != 0, which means that all gains are already delivered
+int SoapySddcSDR::getMGCs(int mgc_idx, float * gain) const
+{
+	const float *steps;
+	int max_step = RadioHandler.GetIFGainSteps(&steps);
+	if (mgc_idx < max_step) {
+		*gain = steps[mgc_idx];
+		return 0;
+	}
+
+	return 1;
+}
+
+int SoapySddcSDR::getActualMgcIdx(void) const
+{
+	int MgcIdx;
+	if (RadioHandler.GetmodeRF() == VHFMODE)
+		MgcIdx = mgcIdxVHF;
+	else
+		MgcIdx = mgcIdxHF;
+
+	const float *steps;
+	int max_step = RadioHandler.GetIFGainSteps(&steps);
+	if (MgcIdx >= max_step)
+	{
+		MgcIdx = max_step - 1;
+	}
+
+	return MgcIdx;
+}
+
+int SoapySddcSDR::setMGC(int mgc_idx)
+{
+	RadioHandler.UpdateIFGain(mgc_idx);
+	if (RadioHandler.GetmodeRF() == VHFMODE)
+		mgcIdxVHF = mgc_idx;
+	else
+		mgcIdxHF = mgc_idx;
+
+	return 0;
+}
+
+
+//-----------
+
+
+
 bool SoapySddcSDR::loadFirmwareImage(const SoapySDR::Kwargs &args) {
     
     if (fwImage.imagefile != nullptr) {
@@ -295,7 +397,6 @@ bool SoapySddcSDR::hasGainMode(const int direction, const size_t channel) const
 
 void SoapySddcSDR::setGainMode(const int direction, const size_t channel, const bool automatic)
 {
-    std::lock_guard <std::mutex> lock(_general_state_mutex);
 }
 
 bool SoapySddcSDR::getGainMode(const int direction, const size_t channel) const
@@ -580,8 +681,96 @@ SoapySDR::ArgInfoList SoapySddcSDR::getSettingInfo(void) const
     biasTHFArg.description = "BiasT (HF)";
     biasTHFArg.type = SoapySDR::ArgInfo::BOOL;
  
-   
     setArgs.push_back(biasTHFArg);
+
+    //--------------------------
+    // VHF Band Specific
+    //--------------------------
+
+    SoapySDR::ArgInfo attVHFArg;
+
+    attVHFArg.key = "att_vhf";
+    attVHFArg.value = "0";
+    attVHFArg.name = "Att VHF";
+    attVHFArg.description = "VHF Attenuation";
+    attVHFArg.type = SoapySDR::ArgInfo::STRING;
+    
+    float attVal = 0.0;
+    for(int i=0; ; i++) 
+    {
+		if (GetAttenuators(i, &attVal) != 0)
+			break;
+
+	    attVHFArg.options.push_back(std::to_string(i));
+        attVHFArg.optionNames.push_back(std::to_string(attVal));
+	}
+    
+    setArgs.push_back(attVHFArg);
+
+    SoapySDR::ArgInfo gainVHFArg;
+
+    gainVHFArg.key = "gain_vhf";
+    gainVHFArg.value = "0";
+    gainVHFArg.name = "Gain VHF";
+    gainVHFArg.description = "VHF Gain";
+    gainVHFArg.type = SoapySDR::ArgInfo::STRING;
+    
+    float gainVal = 0.0;
+    for(int i=0; ; i++) 
+    {
+		if (getMGCs(i, &gainVal) != 0)
+			break;
+
+	    gainVHFArg.options.push_back(std::to_string(i));
+        gainVHFArg.optionNames.push_back(std::to_string(gainVal));
+	}
+    
+    setArgs.push_back(gainVHFArg);
+
+
+    //--------------------------
+    // HF Band Specific
+    //--------------------------
+
+    SoapySDR::ArgInfo attHFArg;
+
+    attHFArg.key = "att_hf";
+    attHFArg.value = "0";
+    attHFArg.name = "Att HF";
+    attHFArg.description = "HF Attenuation";
+    attHFArg.type = SoapySDR::ArgInfo::STRING;
+    
+    attVal = 0.0;
+    for(int i=0; ; i++) 
+    {
+		if (GetAttenuators(i, &attVal) != 0)
+			break;
+
+	    attHFArg.options.push_back(std::to_string(i));
+        attHFArg.optionNames.push_back(std::to_string(attVal));
+	}
+    
+    setArgs.push_back(attHFArg);
+
+    SoapySDR::ArgInfo gainHFArg;
+
+    gainHFArg.key = "gain_hf";
+    gainHFArg.value = "0";
+    gainHFArg.name = "Gain HF";
+    gainHFArg.description = "HF Gain";
+    gainHFArg.type = SoapySDR::ArgInfo::STRING;
+    
+    gainVal = 0.0;
+    for(int i=0; ; i++) 
+    {
+		if (getMGCs(i, &gainVal) != 0)
+			break;
+
+	    gainHFArg.options.push_back(std::to_string(i));
+        gainHFArg.optionNames.push_back(std::to_string(gainVal));
+	}
+    
+    setArgs.push_back(gainHFArg);
 
     return setArgs;
 }
@@ -630,6 +819,34 @@ void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value
         SoapySDR_logf(SOAPY_SDR_DEBUG, "BiasT HF: %s", biasTeeHF ? "true" : "false");
         RadioHandler.UpdBiasT_HF(biasTeeHF);
     }
+    else if (key == "att_vhf")
+    {
+        attIdxVHF = std::stod(value);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "VHF RF Att Idx: %d", attIdxVHF);
+        if (RadioHandler.GetmodeRF() == VHFMODE)
+            RadioHandler.UpdateattRF(attIdxVHF);
+    }
+    else if (key == "gain_vhf")
+    {
+        int gainIdxVHF = std::stod(value);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "VHF IFGain Idx: %d", gainIdxVHF);
+        if (RadioHandler.GetmodeRF() == VHFMODE)
+            RadioHandler.UpdateIFGain(gainIdxVHF);
+    }
+    else if (key == "att_hf")
+    {
+        attIdxHF = std::stod(value);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "HF RF Att Idx: %d", attIdxVHF);
+        if (RadioHandler.GetmodeRF() == HFMODE)
+            RadioHandler.UpdateattRF(attIdxHF);
+    }
+    else if (key == "gain_hf")
+    {
+        int gainIdxHF = std::stod(value);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "HF IFGain Idx: %d", gainIdxHF);
+        if (RadioHandler.GetmodeRF() == HFMODE)
+            RadioHandler.UpdateIFGain(gainIdxHF);
+    }
 }
 
 std::string SoapySddcSDR::readSetting(const std::string &key) const
@@ -661,6 +878,22 @@ std::string SoapySddcSDR::readSetting(const std::string &key) const
     else if (key == "bias_tee_hf")
     {
         return BoolToString(RadioHandler.GetBiasT_HF());
+    }
+    else if (key == "att_vhf")
+    {
+        return std::to_string(attIdxVHF);
+    }
+    else if (key == "gain_vhf")
+    {
+        return std::to_string(mgcIdxVHF);
+    }
+    else if (key == "att_hf")
+    {
+        return std::to_string(attIdxHF);
+    }
+    else if (key == "gain_hf")
+    {
+        return std::to_string(mgcIdxHF);
     }
 
     SoapySDR_logf(SOAPY_SDR_WARNING, "Unknown setting '%s'", key.c_str());

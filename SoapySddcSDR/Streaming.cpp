@@ -80,10 +80,16 @@ SoapySDR::Stream *SoapySddcSDR::setupStream(const int direction,
 	if ((newmode == VHFMODE) && (rfmode != VHFMODE))
 	{
 			RadioHandler.UpdatemodeRF(VHFMODE);
+            setMGC(mgcIdxVHF);
+			SetAttenuator(attIdxVHF);
+			//SetSrateInternal(giExtSrateIdxVHF, false);
 	}
 	else if ((newmode == HFMODE) && (rfmode != HFMODE))
 	{
 			RadioHandler.UpdatemodeRF(HFMODE);
+            setMGC(mgcIdxHF);
+			SetAttenuator(attIdxHF);
+			//SetSrateInternal(giExtSrateIdxHF, false)
 	}
 
     setFrequency(direction, 0, LOfreq, args);

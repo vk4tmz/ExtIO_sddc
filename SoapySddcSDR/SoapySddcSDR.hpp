@@ -243,7 +243,6 @@ private:
     // Settings
     sdrRXFormat rxFormat = SDR_RX_FORMAT_FLOAT32;
     bool overclock = false;
-    int sampleRateIdx;
     int srateIdxVHF = 0;
     int srateIdxHF = 0;
 
@@ -252,11 +251,10 @@ private:
     double ppmHF = 0;
     bool vga = false;
 
-    int attIdx = 0;
-    int gainHF = 0;
-    int attHF = 0;
-    int gainVHF = 0;
-    int attVHF = 0;
+    int mgcIdxHF = 0;
+    int attIdxHF = 0;
+    int mgcIdxVHF = 0;
+    int attIdxVHF = 0;
 
     bool useShort = false;
     bool streamActive = false;
@@ -269,15 +267,21 @@ private:
 
 
 
+    int GetAttenuators(int atten_idx, float* attenuation) const;
+    int GetActualAttIdx(void) const;
+    int SetAttenuator(int atten_idx);
+    int getMGCs(int mgc_idx, float * gain) const;
+    int getActualMgcIdx(void) const;
+    int setMGC(int mgc_idx);
 
     void selectDevice(const std::string idx,
                       const std::string &serial);
 
     int getSampleRateIdx(void);
+    int getSrates(int srate_idx, double *samplerate) const;
     int setSampleRateIdx(int srate_idx);
     int SetOverclock(uint32_t adcfreq);
     int TuneLO(double freq);
     int convertToSampleRateIdx(uint32_t samplerate);
-    int getSrates(int srate_idx, double *samplerate) const;
-
+    
 };
