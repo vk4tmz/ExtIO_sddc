@@ -13,6 +13,8 @@ const double DEFAULT_SAMPLE_RATE = 2e6;
 
 const int TRANSFER_SAMPLES_MULTIPLIER = 1;
 
+const int MAX_CB_BUFFER_BLOCK_SIZE = EXT_BLOCKLEN * 2 * sizeof(float);
+
 typedef enum sdrRXFormat
 {
     SDR_RX_FORMAT_FLOAT32, SDR_RX_FORMAT_INT16
@@ -55,6 +57,7 @@ class SoapySddcSDR: public SoapySDR::Device
 public:
     inline static FirmwareImage_t fwImage;
     inline static std::map<std::string, SoapySDR::Kwargs> _cachedResults;
+    inline static ringbuffer<float> cbbuffer;
 
     mutable std::mutex _general_state_mutex;
 
@@ -262,7 +265,6 @@ private:
     fx3class *Fx3 = CreateUsbHandler();
     RadioHandlerClass RadioHandler;
     r2iqBasicControlClass *r2iqControl;
-    std::mutex mutexStreaming;
     bool gbInitHW = false;
 
 

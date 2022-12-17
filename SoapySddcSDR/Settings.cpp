@@ -2,9 +2,13 @@
 #include <errno.h>
 #include "SoapySddcSDR.hpp"
 
-static void Callback(void* context, const float* data, uint32_t len)
+void Callback(void* context, const float* data, uint32_t len)
 {
     //SoapySDR_logf(SOAPY_SDR_DEBUG, "CB: data len [%d]", len);
+    auto buf =  SoapySddcSDR::cbbuffer.getWritePtr();
+    //memcpy(buf, data, len * 2 * sizeof(float));
+    memcpy(buf, data, len * sizeof(float));
+    SoapySddcSDR::cbbuffer.WriteDone();
 }
 
 SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
@@ -14,6 +18,8 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
     if (!SoapySddcSDR::loadFirmwareImage(args)) {
         throw std::runtime_error("Failed to load firmware image.");
     }
+
+    SoapySddcSDR::cbbuffer.setBlockSize(MAX_CB_BUFFER_BLOCK_SIZE);
 
     SetOverclock(DEFAULT_ADC_FREQ);
 

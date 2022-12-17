@@ -135,7 +135,8 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
                              long long &timeNs,
                              const long timeoutUs)
 {
-    int bs = EXT_BLOCKLEN * 2 * sizeof(float);
+    //int bs = EXT_BLOCKLEN * 2 * sizeof(float);
+    int bs = EXT_BLOCKLEN * sizeof(float);
  
     //SoapySDR_logf(SOAPY_SDR_DEBUG, "readStream(): timeNs: [%ld], timeoutUs: [%ld] numElems: [%d]  BlockSize: [%d] Flags: ]%d]  useShort: [%d]", timeNs, timeoutUs, numElems, bs, flags, useShort);
    
@@ -149,13 +150,11 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
     else
     {
         char *buf0 = (char *)buffs[0];
-        while ((returnedElems + transferSamples) <= numElems)
+        // while ((returnedElems + transferSamples) <= numElems)
         {
-            std::unique_lock<std::mutex> lk(mutexStreaming);
-            auto buf = RadioHandler.outputbuffer.getReadPtr();
+            auto buf = SoapySddcSDR::cbbuffer.getReadPtr();
             std::memcpy(buf0, buf, bs);
-
-            RadioHandler.outputbuffer.ReadDone();
+            SoapySddcSDR::cbbuffer.ReadDone();
             buf0 += bs;
             returnedElems += transferSamples;
         }
