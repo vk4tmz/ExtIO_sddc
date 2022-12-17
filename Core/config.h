@@ -66,7 +66,7 @@ enum rf_mode { NOMODE = 0, HFMODE = 0x1, VHFMODE = 0x2 };
 #define MW_HIGH ( 2000000)
 
 //#define EXT_BLOCKLEN		512	* 64	/* 32768 only multiples of 512 */
-#define EXT_BLOCKLEN		transferSamples
+#define EXT_BLOCKLEN		512	* 70    /* 35840 only multiples of 512 */
 
 #define RFDDCNAME ("NVIA L768M256")
 #define RFDDCVER ("v 1.0")

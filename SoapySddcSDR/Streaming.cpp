@@ -85,6 +85,8 @@ void SoapySddcSDR::closeStream(SoapySDR::Stream *stream)
 {
     streamActive = false;
 
+    SoapySddcSDR::cbbuffer.Stop();
+
     // TODO - Close / Release
     RadioHandler.Stop();
     RadioHandler.Close();
@@ -93,7 +95,7 @@ void SoapySddcSDR::closeStream(SoapySDR::Stream *stream)
 
 size_t SoapySddcSDR::getStreamMTU(SoapySDR::Stream *stream) const
 {
-    return EXT_BLOCKLEN * TRANSFER_SAMPLES_MULTIPLIER;
+    return EXT_BLOCKLEN;
 }
 
 int SoapySddcSDR::activateStream(SoapySDR::Stream *stream,
@@ -148,13 +150,13 @@ int SoapySddcSDR::readStream(SoapySDR::Stream *stream,
     else
     {
         char *buf0 = (char *)buffs[0];
-        // while ((returnedElems + transferSamples) <= numElems)
+        while ((returnedElems + EXT_BLOCKLEN) <= (int)numElems)
         {
             auto buf = SoapySddcSDR::cbbuffer.getReadPtr();
             std::memcpy(buf0, buf, bs);
             SoapySddcSDR::cbbuffer.ReadDone();
             buf0 += bs;
-            returnedElems += transferSamples;
+            returnedElems += EXT_BLOCKLEN;
         }
     }
 

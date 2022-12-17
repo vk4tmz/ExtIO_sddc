@@ -18,7 +18,7 @@ SoapySddcSDR::SoapySddcSDR(const SoapySDR::Kwargs &args)
         throw std::runtime_error("Failed to load firmware image.");
     }
 
-    SoapySddcSDR::cbbuffer.setBlockSize(MAX_CB_BUFFER_BLOCK_SIZE);
+    SoapySddcSDR::cbbuffer.setBlockSize(EXT_BLOCKLEN * 2 * sizeof(float));
 
     SetOverclock(DEFAULT_ADC_FREQ);
 
