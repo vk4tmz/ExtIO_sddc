@@ -6,8 +6,7 @@ void Callback(void* context, const float* data, uint32_t len)
 {
     //SoapySDR_logf(SOAPY_SDR_DEBUG, "CB: data len [%d]", len);
     auto buf =  SoapySddcSDR::cbbuffer.getWritePtr();
-    //memcpy(buf, data, len * 2 * sizeof(float));
-    memcpy(buf, data, len * sizeof(float));
+    memcpy(buf, data, len * 2 * sizeof(float));
     SoapySddcSDR::cbbuffer.WriteDone();
 }
 
