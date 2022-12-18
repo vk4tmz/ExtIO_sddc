@@ -12,7 +12,12 @@ using namespace std::chrono;
 
 class fx3handler : public fx3class
 {
-    bool Open(const uint8_t* fw_data, uint32_t fw_size)
+    bool Open(uint8_t dev_idx, const uint8_t* fw_data, uint32_t fw_size)
+    {
+        return true;
+    }
+
+    bool Close()
     {
         return true;
     }
@@ -47,6 +52,11 @@ class fx3handler : public fx3class
     }
 
     bool Enumerate(unsigned char& idx, char* lbuf, const uint8_t* fw_data, uint32_t fw_size)
+    {
+        return true;
+    }
+
+    bool Enumerate(unsigned char& idx, device_info_t *dev_info, const uint8_t* fw_data, uint32_t fw_size)
     {
         return true;
     }

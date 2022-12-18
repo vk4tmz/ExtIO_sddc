@@ -42,6 +42,10 @@ add_library(SDDC_CORE STATIC ${SRC})
 set_target_properties(SDDC_CORE PROPERTIES POSITION_INDEPENDENT_CODE True)
 target_compile_definitions(SDDC_CORE PUBLIC _CRT_SECURE_NO_WARNINGS)
 
+add_library(SDDC_SHARED SHARED ${SRC})
+set_target_properties(SDDC_SHARED PROPERTIES POSITION_INDEPENDENT_CODE True)
+target_compile_definitions(SDDC_SHARED PUBLIC _CRT_SECURE_NO_WARNINGS)
+
 if (NOT USE_SIMD_OPTIMIZATIONS)
    target_compile_definitions(SDDC_CORE PRIVATE NO_SIMD_OPTIM)
 endif()

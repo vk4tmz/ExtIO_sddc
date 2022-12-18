@@ -57,6 +57,24 @@ bool fx3handler::GetFx3DeviceStreamer() {   // open class
 
 bool fx3handler::Enumerate(unsigned char& idx, char* lbuf, const uint8_t* fw_data, uint32_t fw_size)
 {
+	device_info_t dev_info;
+
+	strcpy(lbuf, "");
+	if (this->Enumerate(idx, &dev_info, fw_data, fw_size)) {
+		strcpy(lbuf, (char *)dev_info.manufacturer);
+		strcat(lbuf, ":");
+		strcat(lbuf, (char *)dev_info.product);
+		strcat(lbuf, ":");
+		strcat(lbuf, (char *)dev_info.serial_number);
+		return true;
+	}
+
+	free_device_info(dev_info);
+
+	return false;
+}
+
+bool fx3handler::Enumerate(unsigned char &idx, device_info_t *dev_info, const uint8_t* fw_data, uint32_t fw_size) {
 	bool r = false;
 	strcpy(lbuf, "");
 	if (fx3dev == nullptr)
@@ -73,16 +91,17 @@ bool fx3handler::Enumerate(unsigned char& idx, char* lbuf, const uint8_t* fw_dat
 			fx3dev->Open(idx);
 		}
 	}
-	strcpy (lbuf, fx3dev->DeviceName);
-	while (strlen(lbuf) < 18) strcat(lbuf, " ");
-	strcat(lbuf, "sn:");
-	strcat(lbuf, wchar2char((wchar_t*)fx3dev->SerialNumber));
+
+	dev_info->manufacturer = strdup(fx3dev->Manufacturer);
+	dev_info->product = strdup(fx3dev->Product)
+	dev_info->serial_number = strdup(fx3dev->SerialNumber);
+
 	fx3dev->Close();
 	devidx = idx;  // -> devidx
 	return true;
 }
 
-bool  fx3handler::Open(const uint8_t* fw_data, uint32_t fw_size) {
+bool  fx3handler::Open(uint8_t dev_idx, const uint8_t* fw_data, uint32_t fw_size) {
 	bool r = false;
 
 	if (!GetFx3DeviceStreamer()) {
@@ -114,6 +133,11 @@ bool  fx3handler::Open(const uint8_t* fw_data, uint32_t fw_size) {
 
 	Fx3IsOn = true;
 	return Fx3IsOn;          // init success
+}
+
+bool fx3handler::Close() {
+	// TODO
+	return true;
 }
 
 

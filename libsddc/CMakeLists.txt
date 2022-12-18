@@ -35,3 +35,5 @@ target_link_libraries(sddc_stream_test sddc ${ASANLIB})
 
 add_executable(sddc_vhf_stream_test sddc_vhf_stream_test.c wavewrite.c)
 target_link_libraries(sddc_vhf_stream_test sddc ${ASANLIB})
+
+install(TARGETS sddc DESTINATION ${CMAKE_INSTALL_LIBDIR})

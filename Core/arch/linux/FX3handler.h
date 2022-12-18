@@ -17,7 +17,8 @@ class fx3handler : public fx3class
 public:
 	fx3handler();
 	virtual ~fx3handler(void);
-	bool Open(const uint8_t* fw_data, uint32_t fw_size) override;
+	bool Open(uint8_t dev_idx, const uint8_t* fw_data, uint32_t fw_size) override;
+	bool Close() override;
 	bool Control(FX3Command command, uint8_t data) override;
 	bool Control(FX3Command command, uint32_t data) override;
 	bool Control(FX3Command command, uint64_t data) override;
@@ -27,6 +28,7 @@ public:
 	void StartStream(ringbuffer<int16_t>& input, int numofblock) override;
 	void StopStream() override;
 	bool Enumerate(unsigned char &idx, char *lbuf, const uint8_t* fw_data, uint32_t fw_size) override;
+	bool Enumerate(unsigned char &idx, device_info_t *dev_info, const uint8_t* fw_data, uint32_t fw_size) override;
 
 private:
 	bool ReadUsb(uint8_t command, uint16_t value, uint16_t index, uint8_t *data, size_t size);
