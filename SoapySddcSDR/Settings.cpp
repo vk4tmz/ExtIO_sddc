@@ -861,10 +861,10 @@ void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value
     }
     else if (key == "gain_vhf")
     {
-        int gainIdxVHF = std::stod(value);
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "VHF IFGain Idx: %d", gainIdxVHF);
+        mgcIdxVHF = std::stod(value);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "VHF IFGain Idx: %d", mgcIdxVHF);
         if (RadioHandler.GetmodeRF() == VHFMODE)
-            RadioHandler.UpdateIFGain(gainIdxVHF);
+            RadioHandler.UpdateIFGain(mgcIdxVHF);
     }
     else if (key == "bias_tee_hf")
     {
@@ -881,10 +881,10 @@ void SoapySddcSDR::writeSetting(const std::string &key, const std::string &value
     }
     else if (key == "gain_hf")
     {
-        int gainIdxHF = std::stod(value);
-        SoapySDR_logf(SOAPY_SDR_DEBUG, "HF IFGain Idx: %d", gainIdxHF);
+        mgcIdxHF = std::stod(value);
+        SoapySDR_logf(SOAPY_SDR_DEBUG, "HF IFGain Idx: %d", mgcIdxHF);
         if (RadioHandler.GetmodeRF() == HFMODE)
-            RadioHandler.UpdateIFGain(gainIdxHF);
+            RadioHandler.UpdateIFGain(mgcIdxHF);
     }
 }
 
