@@ -36,11 +36,11 @@ static void print_steps(const char *name, libsddc_handler_t dev, int rf) {
     int count = rf ? sddc_get_rf_gain_steps(dev, &steps) : sddc_get_if_gain_steps(dev, &steps);
     fprintf(stderr, "%s: %d steps", name, count);
     for (int i = 0; i < count; ++i) fprintf(stderr, " %g", steps[i]);
-    fprintf(stderr, "\\n");
+    fprintf(stderr, "\n");
     free((void *)steps);
 }
 static void usage(const char *name) {
-    fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds]\n", name);
+    fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds] [-L list gain steps]\n", name);
     fprintf(stderr, "PPM convention: corrected tuner request = round(nominal_Hz / (1 + ppm/1e6)); positive ppm means oscillator runs fast.\n");
     fprintf(stderr, "Output is interleaved native-endian float32 I,Q; ADC rate is NOT necessarily complex IQ rate.\n");
 }
@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
         fabs(ppm) > 500 || seconds <= 0 || seconds > 60 || optind != argc) {
         usage(argv[0]); return 2;
     }
+    if (list_only && frequency == 0) frequency = 104500000;
     double adjusted = frequency / (1.0 + ppm * 1e-6);
     if (adjusted < 1 || adjusted > UINT32_MAX) return 2;
     uint32_t command_hz = (uint32_t)llround(adjusted);
@@ -92,7 +93,7 @@ int main(int argc, char **argv) {
         sddc_set_decimation(dev, 0) != ERR_SUCCESS) {
         fprintf(stderr, "VHF/ADC/decimation configuration failed\n"); goto done;
     }
-    fprintf(stderr, "Reported ADC rate: %" PRIu32 " Hz; nominal r2iq rate: %" PRIu32 " complex samples/s\\n",
+    fprintf(stderr, "Reported ADC rate: %" PRIu32 " Hz; nominal r2iq rate: %" PRIu32 " complex samples/s\n",
             sddc_get_adc_sample_rate(dev), sddc_get_adc_sample_rate(dev) / 2);
     print_steps("RF steps (driver units)", dev, 1);
     print_steps("IF steps (driver units)", dev, 0);
@@ -125,7 +126,7 @@ int main(int argc, char **argv) {
     while (received < goal && !interrupted && !write_failed) nanosleep(&nap, NULL);
     clock_gettime(CLOCK_MONOTONIC, &ended);
     double elapsed = (ended.tv_sec - started.tv_sec) + (ended.tv_nsec - started.tv_nsec) * 1e-9;
-    fprintf(stderr, "Wall-time %.3f s; callback throughput %.3f Mcomplex/s (not an independent ADC clock calibration)\\n", elapsed, received / elapsed / 1e6);
+    fprintf(stderr, "Wall-time %.3f s; callback throughput %.3f Mcomplex/s (not an independent ADC clock calibration)\n", elapsed, received / elapsed / 1e6);
     rc = (!interrupted && !write_failed && received == goal) ? 0 : 1;
 done:
     if (running) sddc_stop_streaming(dev);
