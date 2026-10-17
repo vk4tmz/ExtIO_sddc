@@ -1,0 +1,118 @@
+/* Independent RX888 VHF CF32 capture, intended for fm-measure.
+ * GPL-3.0-or-later. Raw interleaved native-endian float32 I,Q.
+ * No hardware auto-gain setting is implied by these manual gain controls.
+ */
+#include <errno.h>
+#include <inttypes.h>
+#include <math.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include "libsddc.h"
+
+static volatile sig_atomic_t interrupted = 0;
+static FILE *out = NULL;
+static uint64_t received = 0, goal = 0;
+static int write_failed = 0;
+static void on_signal(int sig) { (void)sig; interrupted = 1; }
+
+static void callback(uint32_t bytes, const sddc_complex_t *data, void *context) {
+    (void)context;
+    if (!out || interrupted || write_failed) return;
+    const size_t n = bytes / sizeof(sddc_complex_t);
+    if (bytes % sizeof(sddc_complex_t)) { write_failed = 1; return; }
+    size_t wanted = (uint64_t)n > goal - received ? (size_t)(goal - received) : n;
+    if (wanted && fwrite(data, sizeof(sddc_complex_t), wanted, out) != wanted)
+        write_failed = 1;
+    received += wanted;
+}
+static void usage(const char *name) {
+    fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds]\n", name);
+    fprintf(stderr, "PPM convention: corrected tuner request = round(nominal_Hz / (1 + ppm/1e6)); positive ppm means oscillator runs fast.\n");
+    fprintf(stderr, "Output is interleaved native-endian float32 I,Q; ADC rate is NOT necessarily complex IQ rate.\n");
+}
+static int parse_double(const char *arg, double *result) {
+    char *end = NULL;
+    errno = 0;
+    *result = strtod(arg, &end);
+    return errno == 0 && end != arg && *end == '\0' && isfinite(*result);
+}
+int main(int argc, char **argv) {
+    double frequency = 0, ppm = 0, rf_gain = 0, if_gain = 0, seconds = 2;
+    int use_rf = 0, use_if = 0;
+    uint32_t adc_rate = 20000000;
+    const char *filename = NULL;
+    int opt;
+    while ((opt = getopt(argc, argv, "hf:o:p:r:i:s:t:")) != -1) {
+        double value;
+        switch (opt) {
+        case 'h': usage(argv[0]); return 0;
+        case 'o': filename = optarg; break;
+        case 'f': if (!parse_double(optarg, &frequency)) return 2; break;
+        case 'p': if (!parse_double(optarg, &ppm)) return 2; break;
+        case 'r': if (!parse_double(optarg, &rf_gain)) return 2; use_rf = 1; break;
+        case 'i': if (!parse_double(optarg, &if_gain)) return 2; use_if = 1; break;
+        case 's':
+            if (!parse_double(optarg, &value) || value < 1 || value > UINT32_MAX || floor(value) != value) return 2;
+            adc_rate = (uint32_t)value;
+            break;
+        case 't': if (!parse_double(optarg, &seconds)) return 2; break;
+        default: usage(argv[0]); return 2;
+        }
+    }
+    if (!filename || frequency < 30000000 || frequency > 1800000000 ||
+        fabs(ppm) > 500 || seconds <= 0 || seconds > 60 || optind != argc) {
+        usage(argv[0]); return 2;
+    }
+    double adjusted = frequency / (1.0 + ppm * 1e-6);
+    if (adjusted < 1 || adjusted > UINT32_MAX) return 2;
+    uint32_t command_hz = (uint32_t)llround(adjusted);
+    fprintf(stderr, "Nominal %.0f Hz; ppm %+.4f; tuner command %" PRIu32 " Hz; ADC request %" PRIu32 " Hz\n",
+            frequency, ppm, command_hz, adc_rate);
+    libsddc_handler_t dev = sddc_create();
+    if (!dev) return 1;
+    int rc = 1, running = 0;
+    if (sddc_init(dev, 0) != ERR_SUCCESS) { fprintf(stderr, "SDDC init failed\n"); goto done; }
+    if (sddc_set_rf_mode(dev, VHFMODE) != ERR_SUCCESS ||
+        sddc_set_adc_sample_rate(dev, adc_rate) != ERR_SUCCESS ||
+        sddc_set_decimation(dev, 0) != ERR_SUCCESS) {
+        fprintf(stderr, "VHF/ADC/decimation configuration failed\n"); goto done;
+    }
+    uint32_t actual = sddc_set_center_frequency(dev, command_hz);
+    /* API returns uint32_t but implementation forwards an error code;
+       do not treat this return as an actual tuned frequency. */
+    (void)actual;
+    if ((use_rf && sddc_set_rf_gain(dev, (float)rf_gain) != ERR_SUCCESS) ||
+        (use_if && sddc_set_if_gain(dev, (float)if_gain) != ERR_SUCCESS)) {
+        fprintf(stderr, "Gain configuration failed\n"); goto done;
+    }
+    out = fopen(filename, "wb");
+    if (!out) { perror("open capture"); goto done; }
+    /* Nominal complex-rate estimate: verify by callback rate at runtime.
+       r2iq converts a real ADC stream, and this factor depends on its implementation. */
+    double complex_rate = (double)adc_rate / 2;
+    goal = (uint64_t)llround(seconds * complex_rate);
+    if (!goal) goto done;
+    if (sddc_set_stream_callback(dev, callback, NULL) != ERR_SUCCESS ||
+        sddc_start_streaming(dev) != ERR_SUCCESS) {
+        fprintf(stderr, "Streaming start failed\n"); goto done;
+    }
+    running = 1;
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
+    struct timespec nap = {0, 10000000};
+    while (received < goal && !interrupted && !write_failed) nanosleep(&nap, NULL);
+    rc = (!interrupted && !write_failed && received == goal) ? 0 : 1;
+done:
+    if (running) sddc_stop_streaming(dev);
+    if (out && fclose(out) != 0) rc = 1;
+    out = NULL;
+    sddc_destroy(dev);
+    fprintf(stderr, "Saved %" PRIu64 " complex samples (%" PRIu64 " bytes), requested %" PRIu64 ", status %d\n",
+            received, received * (uint64_t)sizeof(sddc_complex_t), goal, rc);
+    return rc;
+}
