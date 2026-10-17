@@ -20,11 +20,12 @@ static uint64_t received = 0, goal = 0;
 static int write_failed = 0;
 static void on_signal(int sig) { (void)sig; interrupted = 1; }
 
-static void callback(uint32_t bytes, const sddc_complex_t *data, void *context) {
+static void callback(uint32_t samples, const sddc_complex_t *data, void *context) {
     (void)context;
     if (!out || interrupted || write_failed) return;
-    const size_t n = bytes / sizeof(sddc_complex_t);
-    if (bytes % sizeof(sddc_complex_t)) { write_failed = 1; return; }
+    /* libsddc forwards RadioHandler::AttachIQ length as COMPLEX SAMPLE COUNT,
+       not as bytes; see RadioHandler::OnDataPacket callbackIQ(..., len_iq/2). */
+    const size_t n = samples;
     size_t wanted = (uint64_t)n > goal - received ? (size_t)(goal - received) : n;
     if (wanted && fwrite(data, sizeof(sddc_complex_t), wanted, out) != wanted)
         write_failed = 1;
