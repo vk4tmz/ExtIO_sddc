@@ -31,6 +31,14 @@ static void callback(uint32_t samples, const sddc_complex_t *data, void *context
         write_failed = 1;
     received += wanted;
 }
+static void print_steps(const char *name, libsddc_handler_t dev, int rf) {
+    const float *steps = NULL;
+    int count = rf ? sddc_get_rf_gain_steps(dev, &steps) : sddc_get_if_gain_steps(dev, &steps);
+    fprintf(stderr, "%s: %d steps", name, count);
+    for (int i = 0; i < count; ++i) fprintf(stderr, " %g", steps[i]);
+    fprintf(stderr, "\\n");
+    free((void *)steps);
+}
 static void usage(const char *name) {
     fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds]\n", name);
     fprintf(stderr, "PPM convention: corrected tuner request = round(nominal_Hz / (1 + ppm/1e6)); positive ppm means oscillator runs fast.\n");
@@ -44,14 +52,15 @@ static int parse_double(const char *arg, double *result) {
 }
 int main(int argc, char **argv) {
     double frequency = 0, ppm = 0, rf_gain = 0, if_gain = 0, seconds = 2;
-    int use_rf = 0, use_if = 0;
+    int use_rf = 0, use_if = 0, list_only = 0;
     uint32_t adc_rate = 20000000;
     const char *filename = NULL;
     int opt;
-    while ((opt = getopt(argc, argv, "hf:o:p:r:i:s:t:")) != -1) {
+    while ((opt = getopt(argc, argv, "hLf:o:p:r:i:s:t:")) != -1) {
         double value;
         switch (opt) {
         case 'h': usage(argv[0]); return 0;
+        case 'L': list_only = 1; break;
         case 'o': filename = optarg; break;
         case 'f': if (!parse_double(optarg, &frequency)) return 2; break;
         case 'p': if (!parse_double(optarg, &ppm)) return 2; break;
@@ -65,7 +74,7 @@ int main(int argc, char **argv) {
         default: usage(argv[0]); return 2;
         }
     }
-    if (!filename || frequency < 30000000 || frequency > 1800000000 ||
+    if ((!list_only && (!filename || frequency < 30000000 || frequency > 1800000000)) ||
         fabs(ppm) > 500 || seconds <= 0 || seconds > 60 || optind != argc) {
         usage(argv[0]); return 2;
     }
@@ -83,6 +92,11 @@ int main(int argc, char **argv) {
         sddc_set_decimation(dev, 0) != ERR_SUCCESS) {
         fprintf(stderr, "VHF/ADC/decimation configuration failed\n"); goto done;
     }
+    fprintf(stderr, "Reported ADC rate: %" PRIu32 " Hz; nominal r2iq rate: %" PRIu32 " complex samples/s\\n",
+            sddc_get_adc_sample_rate(dev), sddc_get_adc_sample_rate(dev) / 2);
+    print_steps("RF steps (driver units)", dev, 1);
+    print_steps("IF steps (driver units)", dev, 0);
+    if (list_only) { rc = 0; goto done; }
     uint32_t actual = sddc_set_center_frequency(dev, command_hz);
     /* API returns uint32_t but implementation forwards an error code;
        do not treat this return as an actual tuned frequency. */
@@ -105,8 +119,13 @@ int main(int argc, char **argv) {
     running = 1;
     signal(SIGINT, on_signal);
     signal(SIGTERM, on_signal);
+    struct timespec started, ended;
+    clock_gettime(CLOCK_MONOTONIC, &started);
     struct timespec nap = {0, 10000000};
     while (received < goal && !interrupted && !write_failed) nanosleep(&nap, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &ended);
+    double elapsed = (ended.tv_sec - started.tv_sec) + (ended.tv_nsec - started.tv_nsec) * 1e-9;
+    fprintf(stderr, "Wall-time %.3f s; callback throughput %.3f Mcomplex/s (not an independent ADC clock calibration)\\n", elapsed, received / elapsed / 1e6);
     rc = (!interrupted && !write_failed && received == goal) ? 0 : 1;
 done:
     if (running) sddc_stop_streaming(dev);
