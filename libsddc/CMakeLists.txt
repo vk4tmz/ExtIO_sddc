@@ -25,3 +25,7 @@ target_link_libraries(sddc_stream_test sddc ${ASANLIB} wavewriter)
 
 add_executable(sddc_vhf_stream_test sddc_vhf_stream_test.c)
 target_link_libraries(sddc_vhf_stream_test sddc ${ASANLIB} wavewriter)
+
+# Independent FM gain research utility (complex float32 IQ)
+add_executable(sddc_gain_capture sddc_gain_capture.c)
+target_link_libraries(sddc_gain_capture PRIVATE sddc ${ASANLIB} m)
