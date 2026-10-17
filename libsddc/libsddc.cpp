@@ -231,7 +231,7 @@ int sddc_get_rf_gain_steps(libsddc_handler_t t, const float** s)
 	vector<float> steps = t->radio_handler->GetRFGainSteps();
 
 	*s = (const float*)malloc(steps.size() * sizeof(float));
-	memcpy(s, steps.data(), steps.size() * sizeof(float));
+	memcpy((void *)*s, steps.data(), steps.size() * sizeof(float));
 
 	return steps.size();
 }
@@ -245,7 +245,7 @@ int sddc_get_if_gain_steps(libsddc_handler_t t, const float** s)
 	vector<float> steps = t->radio_handler->GetIFGainSteps();
 
 	*s = (const float*)malloc(steps.size() * sizeof(float));
-	memcpy(s, steps.data(), steps.size() * sizeof(float));
+	memcpy((void *)*s, steps.data(), steps.size() * sizeof(float));
 
 	return steps.size();
 }
