@@ -107,6 +107,8 @@ sddc_err_t	sddc_set_if_gain(libsddc_handler_t t, float gain);
 
 // --- Tuner --- //
 uint32_t	sddc_set_center_frequency(libsddc_handler_t t, uint32_t freq);
+// Native analogue R828D IF filter (RX888 MkII only); returns error on unsupported firmware.
+sddc_err_t sddc_set_tuner_bandwidth(libsddc_handler_t t, uint32_t bandwidth_hz);
 
 // --- Misc --- //
 bool		sddc_get_dither();
