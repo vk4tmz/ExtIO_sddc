@@ -67,6 +67,8 @@ public:
 	virtual std::vector<SDDC::DeviceItem> GetDeviceList() = 0;
 };
 
+// Configure an optional FX3 image before opening any device (single SDR process).
+extern "C" bool SetUsbFirmwareOverride(const char *path);
 extern "C" fx3class* CreateUsbHandler();
 
 #endif // FX3CLASS_H
