@@ -79,6 +79,11 @@ sddc_err_t sddc_get_device(uint8_t dev_index, struct sddc_device_t *dev)
 // --- //
 
 
+sddc_err_t sddc_set_firmware_path(const char *path)
+{
+    return SetUsbFirmwareOverride(path) ? ERR_SUCCESS : ERR_NOT_COMPATIBLE;
+}
+
 libsddc_handler_t sddc_create()
 {
 	return new libsddc_handler();
