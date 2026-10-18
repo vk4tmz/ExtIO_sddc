@@ -1,5 +1,16 @@
 # FM-009: RX888 MkII native R828D IF bandwidth — implementation checkpoint
 
+## Implementation update — 2026-10-18
+
+The opt-in `-B <Hz>` source changes have now been committed to this **existing branch** (no new branch). Changes span `Interface.h`, FX3 `USBhandler.c`, RX888R2 hardware class, RadioHandler, libsddc and `sddc_gain_capture`. Existing invocation without `-B` retains firmware 8 MHz default; `-B 290000` requests the driver's nominal 290 kHz filter with host IF correction to 1.925 MHz. The capture requests bandwidth before tuning and before streaming.
+
+**Not yet validated:** these commits have not been compiled or used on RX888 hardware. A matching newly built FX3 image is required for explicit `-B`, and receiver firmware loading must be carefully controlled before any on-air test. Never run `-B` against old firmware expecting it to work. Device ACK is checked but there is no independent register readback yet. Analogue filter change does not change IQ sample rate.
+
+**Important:** `r82xx_set_bandwidth()` returns positive IF centre on success; the FX3 argument handler converts this to a zero success result. The synthetic 5 MHz alias was excluded since the driver maps that request to 6 MHz.
+
+## Original source audit
+
+
 Status: **source audited; device control NOT yet implemented or validated**. This note deliberately does not change default firmware or the working `sddc_gain_capture` behavior.
 
 ## Exact current source linkage
