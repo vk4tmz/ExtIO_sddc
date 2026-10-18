@@ -79,6 +79,7 @@ public:
 	// --- Tuner --- //
 	uint32_t        GetCenterFrequency();
     sddc_err_t      SetCenterFrequency(uint32_t freq);
+    sddc_err_t      SetTunerBandwidth(uint32_t bandwidth_hz);
 
 	// --- RF/IF adjustments --- //
 	std::vector<float>   GetRFGainSteps(sddc_rf_mode_t mode = NOMODE);
