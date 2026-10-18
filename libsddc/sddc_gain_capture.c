@@ -17,6 +17,7 @@
 static volatile sig_atomic_t interrupted = 0;
 static FILE *out = NULL;
 static uint64_t received = 0, goal = 0;
+static int continuous = 0;
 static int write_failed = 0;
 static void on_signal(int sig) { (void)sig; interrupted = 1; }
 
@@ -26,10 +27,12 @@ static void callback(uint32_t samples, const sddc_complex_t *data, void *context
     /* libsddc forwards RadioHandler::AttachIQ length as COMPLEX SAMPLE COUNT,
        not as bytes; see RadioHandler::OnDataPacket callbackIQ(..., len_iq/2). */
     const size_t n = samples;
-    size_t wanted = (uint64_t)n > goal - received ? (size_t)(goal - received) : n;
-    if (wanted && fwrite(data, sizeof(sddc_complex_t), wanted, out) != wanted)
-        write_failed = 1;
-    received += wanted;
+    size_t wanted = continuous ? n : ((uint64_t)n > goal - received ? (size_t)(goal - received) : n);
+    if (wanted) {
+        size_t written = fwrite(data, sizeof(sddc_complex_t), wanted, out);
+        received += written;
+        if (written != wanted) write_failed = 1;
+    }
 }
 static void print_steps(const char *name, libsddc_handler_t dev, int rf) {
     const float *steps = NULL;
@@ -43,6 +46,7 @@ static void usage(const char *name) {
     fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds] [-P RF_precondition_dB] [-L list gain steps]\n", name);
     fprintf(stderr, "PPM convention: corrected tuner request = round(nominal_Hz / (1 + ppm/1e6)); positive ppm means oscillator runs fast.\n");
     fprintf(stderr, "Output is interleaved native-endian float32 I,Q; ADC rate is NOT necessarily complex IQ rate.\n");
+    fprintf(stderr, "-t 0: continuous IQ output until SIGINT/SIGTERM or reader disconnect (use a FIFO to avoid storing IQ).\n");
 }
 static int parse_double(const char *arg, double *result) {
     char *end = NULL;
@@ -76,7 +80,7 @@ int main(int argc, char **argv) {
         }
     }
     if ((!list_only && (!filename || frequency < 30000000 || frequency > 1800000000)) ||
-        fabs(ppm) > 500 || seconds <= 0 || seconds > 60 ||
+        fabs(ppm) > 500 || seconds < 0 || seconds > 60 ||
         (use_precondition && (!use_rf || rf_precondition == rf_gain)) || optind != argc) {
         usage(argv[0]); return 2;
     }
@@ -125,29 +129,34 @@ int main(int argc, char **argv) {
     /* Nominal complex-rate estimate: verify by callback rate at runtime.
        r2iq converts a real ADC stream, and this factor depends on its implementation. */
     double complex_rate = (double)adc_rate / 2;
-    goal = (uint64_t)llround(seconds * complex_rate);
-    if (!goal) goto done;
+    continuous = (seconds == 0);
+    goal = continuous ? 0 : (uint64_t)llround(seconds * complex_rate);
+    if (!continuous && !goal) goto done;
+    /* A FIFO reader may close before the producer; report EPIPE instead of
+       allowing default SIGPIPE to terminate the process unexpectedly. */
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
     if (sddc_set_stream_callback(dev, callback, NULL) != ERR_SUCCESS ||
         sddc_start_streaming(dev) != ERR_SUCCESS) {
         fprintf(stderr, "Streaming start failed\n"); goto done;
     }
     running = 1;
-    signal(SIGINT, on_signal);
-    signal(SIGTERM, on_signal);
     struct timespec started, ended;
     clock_gettime(CLOCK_MONOTONIC, &started);
     struct timespec nap = {0, 10000000};
-    while (received < goal && !interrupted && !write_failed) nanosleep(&nap, NULL);
+    while ((continuous || received < goal) && !interrupted && !write_failed) nanosleep(&nap, NULL);
     clock_gettime(CLOCK_MONOTONIC, &ended);
     double elapsed = (ended.tv_sec - started.tv_sec) + (ended.tv_nsec - started.tv_nsec) * 1e-9;
     fprintf(stderr, "Wall-time %.3f s; callback throughput %.3f Mcomplex/s (not an independent ADC clock calibration)\n", elapsed, received / elapsed / 1e6);
-    rc = (!interrupted && !write_failed && received == goal) ? 0 : 1;
+    rc = continuous ? (!write_failed && interrupted ? 0 : 1)
+                    : (!interrupted && !write_failed && received == goal ? 0 : 1);
 done:
     if (running) sddc_stop_streaming(dev);
     if (out && fclose(out) != 0) rc = 1;
     out = NULL;
     sddc_destroy(dev);
-    fprintf(stderr, "Saved %" PRIu64 " complex samples (%" PRIu64 " bytes), requested %" PRIu64 ", status %d\n",
+    fprintf(stderr, "Streamed %" PRIu64 " complex samples (%" PRIu64 " bytes), requested %" PRIu64 ", status %d\n",
             received, received * (uint64_t)sizeof(sddc_complex_t), goal, rc);
     return rc;
 }
