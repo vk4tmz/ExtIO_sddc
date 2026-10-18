@@ -187,6 +187,11 @@ sddc_err_t sddc_set_biast_vhf(libsddc_handler_t t, bool new_state)
 	return t->radio_handler->SetBiasT_VHF(new_state);
 }
 
+sddc_err_t sddc_set_tuner_bandwidth(libsddc_handler_t t, uint32_t bandwidth_hz)
+{
+    return t->radio_handler->SetTunerBandwidth(bandwidth_hz);
+}
+
 uint32_t sddc_set_center_frequency (libsddc_handler_t t, uint32_t freq)
 {
 	return t->radio_handler->SetCenterFrequency(freq);
