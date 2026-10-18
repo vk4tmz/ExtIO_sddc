@@ -46,7 +46,7 @@ static void usage(const char *name) {
     fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds] [-P RF_precondition_dB] [-L list gain steps]\n", name);
     fprintf(stderr, "PPM convention: corrected tuner request = round(nominal_Hz / (1 + ppm/1e6)); positive ppm means oscillator runs fast.\n");
     fprintf(stderr, "Output is interleaved native-endian float32 I,Q; ADC rate is NOT necessarily complex IQ rate.\n");
-    fprintf(stderr, "-t 0: continuous IQ output until SIGINT/SIGTERM or reader disconnect (use a FIFO to avoid storing IQ).\n");
+    fprintf(stderr, "-t 0: continuous IQ output; -t 1..3600: finite capture duration in seconds.\n");
 }
 static int parse_double(const char *arg, double *result) {
     char *end = NULL;
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
         }
     }
     if ((!list_only && (!filename || frequency < 30000000 || frequency > 1800000000)) ||
-        fabs(ppm) > 500 || seconds < 0 || seconds > 60 ||
+        fabs(ppm) > 500 || seconds < 0 || seconds > 3600 ||
         (use_precondition && (!use_rf || rf_precondition == rf_gain)) || optind != argc) {
         usage(argv[0]); return 2;
     }
