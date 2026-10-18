@@ -388,7 +388,23 @@ CyFxSlFifoApplnUSBSetupCB (
 						case R82XX_SIDEBAND:
 							rc = r82xx_set_sideband(&tuner, wValue);
 							break;
-						case R82XX_HARMONIC:
+						case R82XX_BANDWIDTH_KHZ:
+                            // Preserve original default; only explicit supported filter selections.
+                            if (HWconfig == RX888r2 &&
+                                (wValue == 8000 || wValue == 7000 || wValue == 6000 ||
+                                 wValue == 5000 || wValue == 3000 || wValue == 2200 ||
+                                 wValue == 1953 || wValue == 1800 || wValue == 1753 ||
+                                 wValue == 1600 || wValue == 1503 || wValue == 1300 ||
+                                 wValue == 1200 || wValue == 1100 || wValue == 950 ||
+                                 wValue == 860 || wValue == 600 || wValue == 470 ||
+                                 wValue == 420 || wValue == 375 || wValue == 290)) {
+                                uint32_t applied_bw = 0;
+                                // Legacy driver maps requested bandwidth by nearest table entry.
+                                rc = r82xx_set_bandwidth(&tuner, (int)wValue * 1000,
+                                                         0, &applied_bw, 1);
+                            }
+                            break;
+                        case R82XX_HARMONIC:
 							// todo
 							break;
 						case DAT31_ATT:
