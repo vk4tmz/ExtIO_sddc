@@ -97,6 +97,7 @@ class RadioHardware {
         virtual sddc_err_t  SetCenterFrequency_VHF(uint32_t freq) = 0;
         virtual uint32_t    GetTunerFrequency_HF() = 0;
         virtual uint32_t    GetTunerFrequency_VHF() = 0;
+        virtual sddc_err_t SetTunerBandwidth(uint32_t) { return ERR_NOT_COMPATIBLE; }
 
         // --- RF settings --- //
         virtual std::vector<float> GetRFSteps_HF () = 0;
@@ -176,9 +177,12 @@ public:
 };
 
 class RX888R2Radio : public RadioHardware {
+    private:
+        uint32_t tuner_if_hz = 4570000;
     public:
         RX888R2Radio(fx3class* fx3);
         const char* GetName() override { return "RX888 mkII"; }
+        sddc_err_t SetTunerBandwidth(uint32_t bandwidth_hz) override;
         float getGain() override { return RX888mk2_GAINFACTOR; }
 
         const std::array<float, 2> GetADCSampleRateLimits() override;
