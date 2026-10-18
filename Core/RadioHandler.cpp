@@ -603,6 +603,11 @@ uint32_t RadioHandler::GetCenterFrequency()
  * 
  * \retval sddc_err_t
  */
+sddc_err_t RadioHandler::SetTunerBandwidth(uint32_t bandwidth_hz)
+{
+    return hardware->SetTunerBandwidth(bandwidth_hz);
+}
+
 sddc_err_t RadioHandler::SetCenterFrequency(uint32_t wishedFreq)
 {
 	TracePrintln(TAG, "%d", wishedFreq);
