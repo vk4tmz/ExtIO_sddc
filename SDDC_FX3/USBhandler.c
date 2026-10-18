@@ -392,7 +392,7 @@ CyFxSlFifoApplnUSBSetupCB (
                             // Preserve original default; only explicit supported filter selections.
                             if (HWconfig == RX888r2 &&
                                 (wValue == 8000 || wValue == 7000 || wValue == 6000 ||
-                                 wValue == 5000 || wValue == 3000 || wValue == 2200 ||
+                                 wValue == 3000 || wValue == 2200 ||
                                  wValue == 1953 || wValue == 1800 || wValue == 1753 ||
                                  wValue == 1600 || wValue == 1503 || wValue == 1300 ||
                                  wValue == 1200 || wValue == 1100 || wValue == 950 ||
