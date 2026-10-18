@@ -400,8 +400,12 @@ CyFxSlFifoApplnUSBSetupCB (
                                  wValue == 420 || wValue == 375 || wValue == 290)) {
                                 uint32_t applied_bw = 0;
                                 // Legacy driver maps requested bandwidth by nearest table entry.
-                                rc = r82xx_set_bandwidth(&tuner, (int)wValue * 1000,
-                                                         0, &applied_bw, 1);
+                                // r82xx_set_bandwidth returns IF centre (>0) on success,
+                                // NOT zero. SETARGFX3 requires rc == 0 for a USB ACK.
+                                int selected_if = r82xx_set_bandwidth(&tuner, (int)wValue * 1000,
+                                                                      0, &applied_bw, 1);
+                                rc = (selected_if > 0 && applied_bw == (uint32_t)wValue * 1000)
+                                    ? 0 : -1;
                             }
                             break;
                         case R82XX_HARMONIC:
