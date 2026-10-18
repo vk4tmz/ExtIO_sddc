@@ -43,7 +43,7 @@ static void print_steps(const char *name, libsddc_handler_t dev, int rf) {
     free((void *)steps);
 }
 static void usage(const char *name) {
-    fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds] [-P RF_precondition_dB] [-L list gain steps]\n", name);
+    fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds] [-P RF_precondition_dB] [-B tuner_IF_BW_Hz] [-L list gain steps]\n", name);
     fprintf(stderr, "PPM convention: corrected tuner request = round(nominal_Hz / (1 + ppm/1e6)); positive ppm means oscillator runs fast.\n");
     fprintf(stderr, "Output is interleaved native-endian float32 I,Q; ADC rate is NOT necessarily complex IQ rate.\n");
     fprintf(stderr, "-t 0: continuous IQ output; -t 1..3600: finite capture duration in seconds.\n");
@@ -57,10 +57,10 @@ static int parse_double(const char *arg, double *result) {
 int main(int argc, char **argv) {
     double frequency = 0, ppm = 0, rf_gain = 0, if_gain = 0, seconds = 2, rf_precondition = 0;
     int use_rf = 0, use_if = 0, list_only = 0, use_precondition = 0;
-    uint32_t adc_rate = 20000000;
+    uint32_t adc_rate = 20000000, tuner_bw = 8000000;
     const char *filename = NULL;
     int opt;
-    while ((opt = getopt(argc, argv, "hLf:o:p:r:i:s:t:P:")) != -1) {
+    while ((opt = getopt(argc, argv, "hLf:o:p:r:i:s:t:P:B:")) != -1) {
         double value;
         switch (opt) {
         case 'h': usage(argv[0]); return 0;
@@ -74,6 +74,10 @@ int main(int argc, char **argv) {
         case 's':
             if (!parse_double(optarg, &value) || value < 1 || value > UINT32_MAX || floor(value) != value) return 2;
             adc_rate = (uint32_t)value;
+            break;
+        case 'B':
+            if (!parse_double(optarg, &value) || value < 1 || value > UINT32_MAX || floor(value) != value) return 2;
+            tuner_bw = (uint32_t)value;
             break;
         case 't': if (!parse_double(optarg, &seconds)) return 2; break;
         default: usage(argv[0]); return 2;
@@ -99,6 +103,11 @@ int main(int argc, char **argv) {
         sddc_set_decimation(dev, 0) != ERR_SUCCESS) {
         fprintf(stderr, "VHF/ADC/decimation configuration failed\n"); goto done;
     }
+    if (tuner_bw != 8000000 && sddc_set_tuner_bandwidth(dev, tuner_bw) != ERR_SUCCESS) {
+        fprintf(stderr, "Native R828D tuner IF bandwidth request %" PRIu32 " Hz failed (matching FX3 firmware required)\n", tuner_bw);
+        goto done;
+    }
+    fprintf(stderr, "R828D analogue IF bandwidth requested: %" PRIu32 " Hz\n", tuner_bw);
     fprintf(stderr, "Reported ADC rate: %" PRIu32 " Hz; nominal r2iq rate: %" PRIu32 " complex samples/s\n",
             sddc_get_adc_sample_rate(dev), sddc_get_adc_sample_rate(dev) / 2);
     print_steps("RF steps (driver units)", dev, 1);
