@@ -55,6 +55,9 @@ sddc_err_t sddc_get_device(uint8_t dev_index, struct sddc_device_t *dev);
 
 // Init and destroy
 libsddc_handler_t sddc_create();
+// Optional explicit FX3 image path; call before sddc_init(). Default: embedded image.
+// Returns error if file cannot be loaded/validated. Only used on bootloader enumeration.
+sddc_err_t sddc_set_firmware_path(const char *path);
 sddc_err_t	sddc_init(libsddc_handler_t, uint8_t dev_index);
 void		sddc_destroy(libsddc_handler_t);
 
