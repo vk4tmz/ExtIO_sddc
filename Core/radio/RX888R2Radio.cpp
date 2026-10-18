@@ -168,9 +168,33 @@ sddc_err_t RX888R2Radio::SetCenterFrequency_HF(uint32_t freq)
 }
 
 
+sddc_err_t RX888R2Radio::SetTunerBandwidth(uint32_t bandwidth_hz)
+{
+    // Only nominal table entries are accepted; IF centre must match FX3 filter table.
+    struct Filter { uint32_t bw; uint32_t if_hz; };
+    static const Filter filters[] = {
+        {8000000,4570000}, {7000000,4570000}, {6000000,3570000},
+        {5000000,3570000}, {3000000,2000000}, {2200000,1600000},
+        {1953000,1530000}, {1800000,1400000}, {1753000,1412000},
+        {1600000,1900000}, {1503000,1276000}, {1300000,2043000},
+        {1200000,1350000}, {1100000,2125000}, {950000,2205000},
+        {860000,1558000}, {600000,1706000}, {470000,1788000},
+        {420000,2121000}, {375000,1857000}, {290000,1925000}
+    };
+    if (currentRFMode != VHFMODE) return ERR_NOT_COMPATIBLE;
+    for (const auto &filter : filters) {
+        if (bandwidth_hz != filter.bw) continue;
+        if (!Fx3->SetArgument(R82XX_BANDWIDTH_KHZ, (uint16_t)(bandwidth_hz / 1000)))
+            return ERR_FX3_TRANSFER_FAILED;
+        tuner_if_hz = filter.if_hz;
+        return ERR_SUCCESS;
+    }
+    return ERR_NOT_COMPATIBLE;
+}
+
 uint32_t RX888R2Radio::GetTunerFrequency_VHF()
 {
-    return R828D_IF_CARRIER;
+    return tuner_if_hz;
 }
 sddc_err_t RX888R2Radio::SetCenterFrequency_VHF(uint32_t freq)
 {
