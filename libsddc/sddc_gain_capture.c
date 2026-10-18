@@ -40,7 +40,7 @@ static void print_steps(const char *name, libsddc_handler_t dev, int rf) {
     free((void *)steps);
 }
 static void usage(const char *name) {
-    fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds] [-L list gain steps]\n", name);
+    fprintf(stderr, "Usage: %s -f Hz -o file.cf32 [-p ppm] [-r RF_dB] [-i IF_dB] [-s ADC_Hz] [-t seconds] [-P RF_precondition_dB] [-L list gain steps]\n", name);
     fprintf(stderr, "PPM convention: corrected tuner request = round(nominal_Hz / (1 + ppm/1e6)); positive ppm means oscillator runs fast.\n");
     fprintf(stderr, "Output is interleaved native-endian float32 I,Q; ADC rate is NOT necessarily complex IQ rate.\n");
 }
@@ -51,12 +51,12 @@ static int parse_double(const char *arg, double *result) {
     return errno == 0 && end != arg && *end == '\0' && isfinite(*result);
 }
 int main(int argc, char **argv) {
-    double frequency = 0, ppm = 0, rf_gain = 0, if_gain = 0, seconds = 2;
-    int use_rf = 0, use_if = 0, list_only = 0;
+    double frequency = 0, ppm = 0, rf_gain = 0, if_gain = 0, seconds = 2, rf_precondition = 0;
+    int use_rf = 0, use_if = 0, list_only = 0, use_precondition = 0;
     uint32_t adc_rate = 20000000;
     const char *filename = NULL;
     int opt;
-    while ((opt = getopt(argc, argv, "hLf:o:p:r:i:s:t:")) != -1) {
+    while ((opt = getopt(argc, argv, "hLf:o:p:r:i:s:t:P:")) != -1) {
         double value;
         switch (opt) {
         case 'h': usage(argv[0]); return 0;
@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
         case 'f': if (!parse_double(optarg, &frequency)) return 2; break;
         case 'p': if (!parse_double(optarg, &ppm)) return 2; break;
         case 'r': if (!parse_double(optarg, &rf_gain)) return 2; use_rf = 1; break;
+        case 'P': if (!parse_double(optarg, &rf_precondition)) return 2; use_precondition = 1; break;
         case 'i': if (!parse_double(optarg, &if_gain)) return 2; use_if = 1; break;
         case 's':
             if (!parse_double(optarg, &value) || value < 1 || value > UINT32_MAX || floor(value) != value) return 2;
@@ -75,7 +76,8 @@ int main(int argc, char **argv) {
         }
     }
     if ((!list_only && (!filename || frequency < 30000000 || frequency > 1800000000)) ||
-        fabs(ppm) > 500 || seconds <= 0 || seconds > 60 || optind != argc) {
+        fabs(ppm) > 500 || seconds <= 0 || seconds > 60 ||
+        (use_precondition && (!use_rf || rf_precondition == rf_gain)) || optind != argc) {
         usage(argv[0]); return 2;
     }
     if (list_only && frequency == 0) frequency = 104500000;
@@ -102,6 +104,18 @@ int main(int argc, char **argv) {
     /* API returns uint32_t but implementation forwards an error code;
        do not treat this return as an actual tuned frequency. */
     (void)actual;
+    /* The same device instance is retained across both setters.
+     * This probes whether an RF=0 request after a nonzero state actually
+     * reprograms hardware; separate capture processes cannot test that.
+     */
+    if (use_precondition) {
+        fprintf(stderr, "RF precondition: %.1f -> final %.1f (same SDDC session)\\n",
+                rf_precondition, rf_gain);
+        if (sddc_set_rf_gain(dev, (float)rf_precondition) != ERR_SUCCESS) {
+            fprintf(stderr, "RF precondition failed\\n");
+            goto done;
+        }
+    }
     if ((use_rf && sddc_set_rf_gain(dev, (float)rf_gain) != ERR_SUCCESS) ||
         (use_if && sddc_set_if_gain(dev, (float)if_gain) != ERR_SUCCESS)) {
         fprintf(stderr, "Gain configuration failed\n"); goto done;
