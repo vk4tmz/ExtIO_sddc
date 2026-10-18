@@ -1,5 +1,8 @@
 #include <string.h>
 #include <assert.h>
+#include <cstdio>
+#include <vector>
+#include <limits>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -14,6 +17,27 @@ extern void usleep(__int64 usec);
 #include "firmware.h"
 
 using namespace std;
+
+static vector<unsigned char> firmware_override;
+static bool firmware_override_active = false;
+extern "C" bool SetUsbFirmwareOverride(const char *path)
+{
+    if (!path || !*path) return false;
+    FILE *f = fopen(path, "rb");
+    if (!f) return false;
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return false; }
+    long n = ftell(f);
+    if (n < 1024 || n > 1024 * 1024 || fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f); return false;
+    }
+    vector<unsigned char> data((size_t)n);
+    bool ok = fread(data.data(), 1, data.size(), f) == data.size();
+    fclose(f);
+    if (!ok || data[0] != 'C' || data[1] != 'Y') return false;
+    firmware_override.swap(data);
+    firmware_override_active = true;
+    return true;
+}
 
 #define firmware_data ((const char *)FIRMWARE)
 #define firmware_size sizeof(FIRMWARE)
@@ -45,7 +69,13 @@ bool fx3handler::Open(SDDC::DeviceItem dev_selector)
 
     DebugPrintln(TAG, "Opening device %s (%s)", dev_selector.product.c_str(), dev_selector.serial_number.c_str());
 
-    sddc_err_t ret = dev.open(dev_selector._usb_def, firmware_data, firmware_size);
+    const char *image = firmware_override_active
+        ? reinterpret_cast<const char *>(firmware_override.data()) : firmware_data;
+    const uint32_t size = firmware_override_active
+        ? (uint32_t)firmware_override.size() : (uint32_t)firmware_size;
+    if (firmware_override_active && !dev_selector._usb_def.need_firmware)
+        WarnPrintln(TAG, "Already programmed: firmware override cannot replace running FX3 RAM image");
+    sddc_err_t ret = dev.open(dev_selector._usb_def, image, size);
     if(ret != ERR_SUCCESS)
     {
         return false;
